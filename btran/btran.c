@@ -7,6 +7,17 @@
 #define getbyte(s, i)   ((unsigned char*)s) [i]
 #define newline()       putchar('\n')
 
+/* Forward declarations. */
+void load(int *x);
+void loadlv(int *x);
+void loadlist(int *x);
+void assign(int *x, int *y);
+void trans(int *x);
+
+/* Boolean values */
+#define FALSE   0
+#define TRUE    -1
+
 /*
  * AE operators and symbols
  */
@@ -51,7 +62,7 @@
 #define S_FNDEF	        44
 #define S_RTDEF	        45
 
-#define S_ASS           50
+#define S_ASSIGN        50
 #define S_RTAP	        51
 #define S_GOTO	        52
 #define S_RESULTIS	53
@@ -211,64 +222,31 @@ FILE *ocode;
 /*
  * Globals used in translator
  */
-//int charcode;
-
-//int trans;
-//int declnames;
-//int decldyn;
-//int declstat;
-//int checkdistinct;
-//int addname;
-//int transdef;
-//int scanlabel;
-//int decllabels;
-//int jumpcond;
-//int transswitch;
-//int transfor;
-//int assign;
-//int loadlist;
-//int compdatalab;
-//int evalconst;
-//int loadzero;
-//int complab;
-//int compjump;
-//int nextparam;
-//int paramnumber;
-
+int paramnumber;
 int ocount;
 int *dvec;
 int dvecs;
 int dvece;
 int dvecp;
 int dvect;
-//int casek;
-//int casel;
-//int casep;
-//int caset;
-//int caseb;
-int currentbranch;
-//int breaklabel;
-//int resultlabel;
-//int defaultlabel;
-//int endcaselabel;
-//int looplabel;
+int *casek;
+int *casel;
+int casep;
+int caset;
+int caseb;
+int *currentbranch;
+int breaklabel;
+int resultlabel;
+int defaultlabel;
+int endcaselabel;
+int looplabel;
 int ssp;
 int vecssp;
-//int savespacesize;
-//int globdecl;
-//int globdecls;
-//int globdeclt;
+int savespacesize;
+int *globdecl;
+int globdecls;
+int globdeclt;
 int comcount;
-
-//int out1;
-//int out2;
-//int out2p;
-//int out3;
-//int out3p;
-//int outn;
-//int outl;
-//int outc;
-//int writeop;
 
 /*
  * Other globals
@@ -279,15 +257,21 @@ int comcount;
 //int formtree;
 //int treep;
 //int treevec;
-//int savespacesize;
+
+int nextparam()
+{
+    paramnumber = paramnumber + 1;
+    return paramnumber;
+}
 
 int cellwithname(n)
+    int *n;
 {
     int x = dvece;
 
     do {
         x = x - 3;
-    } while (x != 0 && dvec[x] != n);
+    } while (x != 0 && (int*) dvec[x] != n);
     return x;
 }
 
@@ -318,7 +302,7 @@ comp(V, treemax)
             exit(8)
 
         if (! option[3]) {
-            compileae(a)
+            compileae(a);
         }
     }
 }
@@ -467,7 +451,7 @@ next:
     case '&': SYMB := S_LOGAND; goto L
     case '=': SYMB := S_EQ; goto L
     case '!': SYMB := S_VECAP; goto L
-    case '_': SYMB := S_ASS; goto L
+    case '_': SYMB := S_ASSIGN; goto L
     case '*': SYMB := S_MULT; goto L
 
     case '/': rch()
@@ -522,7 +506,7 @@ next:
               return
 
     case ':': rch()
-              IF ch='=' DO { SYMB := S_ASS; goto L  }
+              IF ch='=' DO { SYMB := S_ASSIGN; goto L  }
               SYMB := S_COLON
               return
 
@@ -576,7 +560,7 @@ next:
                 goto next
             }
 
-            ch := '*S'
+            ch := ' '
             caereport(94)
             rch()
             goto next
@@ -608,9 +592,9 @@ int value(ch)
 
 GET "SYNHDR"
 
-void d(S, ITEM)
+void d(s, ITEM)
 {
-    unpackstring(S, CHARV)
+    unpackstring(s, CHARV)
     WORDSIZE := packstring(CHARV, WORDV)
     lookupword()
     WORDNODE[0] := ITEM
@@ -624,7 +608,7 @@ void declsyswords()
     d("BREAK", S_BREAK)
     d("BY", S_BY)
 
-    d("CASE", S_case)
+    d("CASE", S_CASE)
 
     d("DO", S_DO)
     d("DEFAULT", S_DEFAULT)
@@ -697,21 +681,21 @@ void declsyswords()
 AND lookupword() = VALOF
 
 {1     LET HASHVAL = (WORDV[0]+WORDV[WORDSIZE] >> 1) REM NAMETABLESIZE
-        LET M = @NAMETABLE[HASHVAL]
+        LET m = @NAMETABLE[HASHVAL]
 
-  next: WORDNODE := *M
+  next: WORDNODE := *m
         UNLESS WORDNODE=0 DO
-             {2 FOR I = 0 TO WORDSIZE DO
-                   IF WORDNODE[I+2] NE WORDV[I] DO
-                   { M := WORDNODE+1
+             {2 FOR i = 0 TO WORDSIZE DO
+                   IF WORDNODE[i+2] NE WORDV[i] DO
+                   { m := WORDNODE+1
                       goto next  }
-                 RESULTIS WORDNODE[0]  }2
+                 return WORDNODE[0]  }2
 
         WORDNODE := newvec(WORDSIZE+2)
         WORDNODE[0], WORDNODE[1] := S_NAME, NAMETABLE[HASHVAL]
-        FOR I = 0 TO WORDSIZE DO WORDNODE[I+2] := WORDV[I]
+        FOR i = 0 TO WORDSIZE DO WORDNODE[i+2] := WORDV[i]
         NAMETABLE[HASHVAL] := WORDNODE
-        RESULTIS S_NAME
+        return S_NAME
 }1
 
 .
@@ -785,23 +769,23 @@ void performget()
     rch();
 }
 
-AND append(d, S) BE
+AND append(d, s) BE
     { LET ND = getbyte(d, 0)
-       AND NS = getbyte(S, 0)
-       FOR I = 1 TO NS DO {
+       AND NS = getbyte(s, 0)
+       FOR i = 1 TO NS DO {
            ND := ND + 1
-           putbyte(d, ND, getbyte(S, I)) }
+           putbyte(d, ND, getbyte(s, i)) }
        putbyte(d, 0, ND) }
 
 AND findlibinput(NAME) = VALOF
     { LET PATH = VEC 64
        AND DIR = "/usr/lib/bcpl/"
        TEST getbyte(DIR, 0) + getbyte(NAME, 0) > 255
-       THEN RESULTIS 0
+       THEN return 0
          OR { putbyte(PATH, 0, 0)
                append(PATH, DIR)
                append(PATH, NAME)
-               RESULTIS findinput(PATH) }
+               return findinput(PATH) }
     }
 
 
@@ -817,37 +801,37 @@ LET newvec(n) = VALOF
        IF treep<=treevec DO
                 { reportmax := 0
                    caereport(98)  }
-        RESULTIS treep  }
+        return treep  }
 
 AND list1(x) = VALOF
     { LET P = newvec(0)
        P[0] := x
-       RESULTIS P  }
+       return P  }
 
 AND list2(x, y) = VALOF
      { LET P = newvec(1)
         P[0], P[1] := x, y
-        RESULTIS P   }
+        return P   }
 
 AND list3(x, y, z) = VALOF
      { LET P = newvec(2)
         P[0], P[1], P[2] := x, y, z
-        RESULTIS P     }
+        return P     }
 
-AND list4(x, y, z, T) = VALOF
+AND list4(x, y, z, t) = VALOF
      { LET P = newvec(3)
-        P[0], P[1], P[2], P[3] := x, y, z, T
-        RESULTIS P   }
+        P[0], P[1], P[2], P[3] := x, y, z, t
+        return P   }
 
-AND list5(x, y, z, T, U) = VALOF
+AND list5(x, y, z, t, U) = VALOF
      { LET P = newvec(4)
-        P[0], P[1], P[2], P[3], P[4] := x, y, z, T, U
-        RESULTIS P   }
+        P[0], P[1], P[2], P[3], P[4] := x, y, z, t, U
+        return P   }
 
-AND list6(x, y, z, T, U, V) = VALOF
+AND list6(x, y, z, t, U, V) = VALOF
      { LET P = newvec(5)
-        P[0], P[1], P[2], P[3], P[4], P[5] := x, y, z, T, U, V
-        RESULTIS P  }
+        P[0], P[1], P[2], P[3], P[4], P[5] := x, y, z, t, U, V
+        return P  }
 
 AND caereport(n, a) BE
      { reportcount := reportcount + 1
@@ -867,7 +851,7 @@ AND caereport(n, a) BE
 
 AND formtree() =  VALOF
     {1 chcount := 0
-        FOR I = 0 TO 63 DO chbuf[I] := 0
+        FOR i = 0 TO 63 DO chbuf[i] := 0
 
      { LET V = VEC 10   // FOR 'GET' STREAMS
         getv, getp := V, 0
@@ -880,14 +864,14 @@ AND formtree() =  VALOF
 
      { LET V = VEC 100
         NAMETABLE, NAMETABLESIZE := V, 100
-        FOR I = 0 TO 100 DO NAMETABLE[I] := 0
+        FOR i = 0 TO 100 DO NAMETABLE[i] := 0
 
         REC_P, REC_L := level(), L
 
         linecount, prline := 1, 0
         rch()
 
-        IF ch=ENDSTREAMCH RESULTIS 0
+        IF ch=ENDSTREAMCH return 0
         declsyswords()
 
      L: nextsymb()
@@ -895,54 +879,54 @@ AND formtree() =  VALOF
         if (option[1]) {    // PP DEBUGGING OPTION
             printf("%u %s\n", SYMB, WORDV);
             if (SYMB == S_END)
-                RESULTIS 0;
+                return 0;
             goto L;
         }
 
      { LET a = rdblockbody()
         UNLESS SYMB=S_END DO { caereport(99); goto L  }
 
-        RESULTIS a
+        return a
 }1
 
 AND caemessage(n, a) BE
-    { LET S = VALOF
+    { LET s = VALOF
 
          SWITCHON n INTO
 
          { default:  printf("%u", n); return;
 
-            case 91: RESULTIS "'8'  '(' OR ')' EXPECTED"
-            case 94: RESULTIS "ILLEGAL CHARACTER"
-            case 95: RESULTIS "STRING TOO LONG"
-            case 96: RESULTIS "NO INPUT %S"
-            case 97: RESULTIS "STRING OR NUMBER EXPECTED"
-            case 98: RESULTIS "PROGRAM TOO LARGE"
-            case 99: RESULTIS "INCORRECT TERMINATION"
+            case 91: return "'8'  '(' OR ')' EXPECTED"
+            case 94: return "ILLEGAL CHARACTER"
+            case 95: return "STRING TOO LONG"
+            case 96: return "NO INPUT %S"
+            case 97: return "STRING OR NUMBER EXPECTED"
+            case 98: return "PROGRAM TOO LARGE"
+            case 99: return "INCORRECT TERMINATION"
 
             case 8: case 40: case 43:
-                     RESULTIS "NAME EXPECTED"
-            case 6: RESULTIS "'{' EXPECTED"
-            case 7: RESULTIS "'}' EXPECTED"
-            case 9: RESULTIS "UNTAGGED '}' MISMATCH"
-            case 32: RESULTIS "ERROR IN EXPRESSION"
-            case 33: RESULTIS "ERROR IN NUMBER"
-            case 34: RESULTIS "BAD STRING"
-            case 15: case 19: case 41: RESULTIS "')' MISSING"
-            case 30: RESULTIS "',' MISSING"
-            case 42: RESULTIS "'=' OR 'BE' EXPECTED"
-            case 44: RESULTIS "'=' OR '(' EXPECTED"
-            case 50: RESULTIS "ERROR IN LABEL"
-            case 51: RESULTIS "ERROR IN COMMAND"
-            case 54: RESULTIS "'OR' EXPECTED"
-            case 57: RESULTIS "'=' EXPECTED"
-            case 58: RESULTIS "'TO' EXPECTED"
-            case 60: RESULTIS "'INTO' EXPECTED"
-            case 61: case 62: RESULTIS "':' EXPECTED"
-            case 63: RESULTIS "'**/' MISSING"
+                     return "NAME EXPECTED"
+            case 6: return "'{' EXPECTED"
+            case 7: return "'}' EXPECTED"
+            case 9: return "UNTAGGED '}' MISMATCH"
+            case 32: return "ERROR IN EXPRESSION"
+            case 33: return "ERROR IN NUMBER"
+            case 34: return "BAD STRING"
+            case 15: case 19: case 41: return "')' MISSING"
+            case 30: return "',' MISSING"
+            case 42: return "'=' OR 'BE' EXPECTED"
+            case 44: return "'=' OR '(' EXPECTED"
+            case 50: return "ERROR IN LABEL"
+            case 51: return "ERROR IN COMMAND"
+            case 54: return "'OR' EXPECTED"
+            case 57: return "'=' EXPECTED"
+            case 58: return "'TO' EXPECTED"
+            case 60: return "'INTO' EXPECTED"
+            case 61: case 62: return "':' EXPECTED"
+            case 63: return "'**/' MISSING"
                        }
 
-         printf(S, a)  }
+         printf(s, a)  }
 
 
 .
@@ -986,14 +970,14 @@ LET rdblockbody() = VALOF
 
         case S_RSECT: case S_END:
         RET:   REC_P, REC_L := P, L
-               RESULTIS a   }1
+               return a   }1
 
 AND rdseq() = VALOF
     { LET a = 0
        ignore(S_SEMICOLON)
        a := rcom()
-       IF SYMB=S_RSECT \/ SYMB=S_END RESULTIS a
-       RESULTIS list3(S_SEQ, a, rdseq())   }
+       IF SYMB=S_RSECT \/ SYMB=S_END return a
+       return list3(S_SEQ, a, rdseq())   }
 
 
 AND rdcdefs() = VALOF
@@ -1010,7 +994,7 @@ AND rdcdefs() = VALOF
   RECOVER: ignore(S_SEMICOLON) } REPEATWHILE SYMB=S_NAME
 
         REC_P, REC_L := P, L
-        RESULTIS a  }1
+        return a  }1
 
 AND rdsect(R) = VALOF
     {  LET TAG, a = WORDNODE, 0
@@ -1022,20 +1006,20 @@ AND rdsect(R) = VALOF
                OR IF WORDNODE=NULLTAG DO
                       { SYMB := 0
                          caereport(9)  }
-        RESULTIS a   }
+        return a   }
 
 
 AND rnamelist() = VALOF
     {  LET a = rname()
-        UNLESS SYMB=S_COMMA RESULTIS a
+        UNLESS SYMB=S_COMMA return a
         nextsymb()
-        RESULTIS list3(S_COMMA, a, rnamelist())   }
+        return list3(S_COMMA, a, rnamelist())   }
 
 
 AND rname() = VALOF
     { LET a = WORDNODE
        checkfor(S_NAME, 8)
-       RESULTIS a  }
+       return a  }
 
 AND ignore(ITEM) BE IF SYMB=ITEM DO nextsymb()
 
@@ -1058,54 +1042,54 @@ LET rbexp() = VALOF
             caereport(32)
 
         case S_QUERY:
-            nextsymb(); RESULTIS list1(S_QUERY)
+            nextsymb(); return list1(S_QUERY)
 
         case S_TRUE:
         case S_FALSE:
         case S_NAME:
             a := WORDNODE
             nextsymb()
-            RESULTIS a
+            return a
 
         case S_STRING:
             a := newvec(WORDSIZE+1)
             a[0] := S_STRING
-            FOR I = 0 TO WORDSIZE DO a[I+1] := WORDV[I]
+            FOR i = 0 TO WORDSIZE DO a[i+1] := WORDV[i]
             nextsymb()
-            RESULTIS a
+            return a
 
         case S_NUMBER:
             a := list2(S_NUMBER, DECVAL)
             nextsymb()
-            RESULTIS a
+            return a
 
         case S_LPAREN:
             nextsymb()
             a := rexp(0)
             checkfor(S_RPAREN, 15)
-            RESULTIS a
+            return a
 
         case S_VALOF:
             nextsymb()
-            RESULTIS list2(S_VALOF, rcom())
+            return list2(S_VALOF, rcom())
 
         case S_VECAP: OP := S_RV
         case S_LV:
-        case S_RV: nextsymb(); RESULTIS list2(OP, rexp(35))
+        case S_RV: nextsymb(); return list2(OP, rexp(35))
 
-        case S_PLUS: nextsymb(); RESULTIS rexp(34)
+        case S_PLUS: nextsymb(); return rexp(34)
 
         case S_MINUS: nextsymb()
                       a := rexp(34)
                       TEST H1[a]=S_NUMBER
                           THEN H2[a] := - H2[a]
                             OR a := list2(S_NEG, a)
-                      RESULTIS a
+                      return a
 
-        case S_NOT: nextsymb(); RESULTIS list2(S_NOT, rexp(24))
+        case S_NOT: nextsymb(); return list2(S_NOT, rexp(24))
 
         case S_TABLE: nextsymb()
-                      RESULTIS list2(S_TABLE, rexplist())   }1
+                      return list2(S_TABLE, rexplist())   }1
 
 
 
@@ -1116,10 +1100,10 @@ AND rexp(n) = VALOF
 
   L: { LET OP = SYMB
 
-        IF nlpending RESULTIS a
+        IF nlpending return a
 
         SWITCHON OP INTO
-    {b default: RESULTIS a
+    {b default: return a
 
         case S_LPAREN: nextsymb()
                        b := 0
@@ -1137,7 +1121,7 @@ AND rexp(n) = VALOF
         case S_EQ: case S_NE:
         case S_LE: case S_GE:
         case S_LS: case S_GR:
-                IF n>=30 RESULTIS a
+                IF n>=30 return a
 
             {R nextsymb()
                 b := rexp(30)
@@ -1158,7 +1142,7 @@ AND rexp(n) = VALOF
         case S_EQV: case S_NEQV: P := 21; goto LASSOC
 
         case S_COND:
-                IF n>=13 RESULTIS a
+                IF n>=13 return a
                 nextsymb()
                 b := rexp(0)
                 checkfor(S_COMMA, 30)
@@ -1167,7 +1151,7 @@ AND rexp(n) = VALOF
 
         LASSOC: Q := P
 
-        DIADIC: IF n>=P RESULTIS a
+        DIADIC: IF n>=P return a
                 nextsymb()
                 a := list3(OP, a, rexp(Q))
                 goto L                     }b     }1
@@ -1178,7 +1162,7 @@ LET rexplist() = VALOF
 
      { LET b = rexp(0)
         UNLESS SYMB=S_COMMA DO { *PTR := b
-                                  RESULTIS a  }
+                                  return a  }
         nextsymb()
         *PTR := list3(S_COMMA, b, 0)
         PTR := @H3[*PTR]  } REPEAT
@@ -1198,11 +1182,11 @@ LET rdef() = VALOF
 
                 IF SYMB=S_BE DO
                      { nextsymb()
-                        RESULTIS list5(S_RTDEF, n, a, rcom(), 0)  }
+                        return list5(S_RTDEF, n, a, rcom(), 0)  }
 
                 IF SYMB=S_EQ DO
                      { nextsymb()
-                        RESULTIS list5(S_FNDEF, n, a, rexp(0), 0)  }
+                        return list5(S_FNDEF, n, a, rexp(0), 0)  }
 
                 caereport(42)  }
 
@@ -1213,8 +1197,8 @@ LET rdef() = VALOF
                 IF SYMB=S_VEC DO
                      { nextsymb()
                         UNLESS H1[n]=S_NAME DO caereport(43)
-                        RESULTIS list3(S_VECDEF, n, rexp(0))  }
-                RESULTIS list3(S_VALDEF, n, rexplist())  }1
+                        return list3(S_VECDEF, n, rexp(0))  }
+                return list3(S_VALDEF, n, rexplist())  }1
 
 .
 
@@ -1227,40 +1211,40 @@ LET rbcom() = VALOF
    {1 LET a, b, OP = 0, 0, SYMB
 
         SWITCHON SYMB INTO
-     { default: RESULTIS 0
+     { default: return 0
 
         case S_NAME: case S_NUMBER: case S_STRING:
         case S_TRUE: case S_FALSE: case S_LV: case S_RV: case S_VECAP:
         case S_LPAREN:
                 a := rexplist()
 
-                IF SYMB=S_ASS  THEN
+                IF SYMB=S_ASSIGN THEN
                     {  OP := SYMB
                         nextsymb()
-                        RESULTIS list3(OP, a, rexplist())  }
+                        return list3(OP, a, rexplist())  }
 
                 IF SYMB=S_COLON DO
                      { UNLESS H1[a]=S_NAME DO caereport(50)
                         nextsymb()
-                        RESULTIS list4(S_COLON, a, rbcom(), 0)  }
+                        return list4(S_COLON, a, rbcom(), 0)  }
 
                 IF H1[a]=S_FNAP DO
                      { H1[a] := S_RTAP
-                        RESULTIS a  }
+                        return a  }
 
                 caereport(51)
-                RESULTIS a
+                return a
 
         case S_GOTO: case S_RESULTIS:
                 nextsymb()
-                RESULTIS list2(OP, rexp(0))
+                return list2(OP, rexp(0))
 
         case S_IF: case S_UNLESS:
         case S_WHILE: case S_UNTIL:
                 nextsymb()
                 a := rexp(0)
                 ignore(S_DO)
-                RESULTIS list3(OP, a, rcom())
+                return list3(OP, a, rcom())
 
         case S_TEST:
                 nextsymb()
@@ -1268,46 +1252,46 @@ LET rbcom() = VALOF
                 ignore(S_DO)
                 b := rcom()
                 checkfor(S_OR, 54)
-                RESULTIS list4(S_TEST, a, b, rcom())
+                return list4(S_TEST, a, b, rcom())
 
         case S_FOR:
-            {  LET I, J, K = 0, 0, 0
+            {  LET i, J, k = 0, 0, 0
                 nextsymb()
                 a := rname()
                 checkfor(S_EQ, 57)
-                I := rexp(0)
+                i := rexp(0)
                 checkfor(S_TO, 58)
                 J := rexp(0)
                 IF SYMB=S_BY DO { nextsymb()
-                                   K := rexp(0)  }
+                                   k := rexp(0)  }
                 ignore(S_DO)
-                RESULTIS list6(S_FOR, a, I, J, K, rcom())  }
+                return list6(S_FOR, a, i, J, k, rcom())  }
 
         case S_LOOP:
         case S_BREAK: case S_RETURN: case S_FINISH: case S_ENDCASE:
                 a := WORDNODE
                 nextsymb()
-                RESULTIS a
+                return a
 
         case S_SWITCHON:
                 nextsymb()
                 a := rexp(0)
                 checkfor(S_INTO, 60)
-                RESULTIS list3(S_SWITCHON, a, rdsect(rdseq))
+                return list3(S_SWITCHON, a, rdsect(rdseq))
 
-        case S_case:
+        case S_CASE:
                 nextsymb()
                 a := rexp(0)
                 checkfor(S_COLON, 61)
-                RESULTIS list3(S_case, a, rbcom())
+                return list3(S_CASE, a, rbcom())
 
         case S_DEFAULT:
                 nextsymb()
                 checkfor(S_COLON, 62)
-                RESULTIS list2(S_DEFAULT, rbcom())
+                return list2(S_DEFAULT, rbcom())
 
         case S_LSECT:
-                RESULTIS rdsect(rdblockbody)   }1
+                return rdsect(rdblockbody)   }1
 
 
 AND rcom() = VALOF
@@ -1323,743 +1307,9 @@ AND rcom() = VALOF
                          THEN a := list2(OP, a)
                            OR a := list3(OP, a, rexp(0))   }
 
-        RESULTIS a  }1
+        return a  }1
 
 .
-
-//    PLIST
-
-
-GET "SYNHDR"
-
-//    TRN0
-
-GET "TRNHDR"
-
-LET nextparam() = VALOF
-    { PARAMNUMBER := PARAMNUMBER + 1
-       RESULTIS PARAMNUMBER  }
-
-LET compileae(x) BE
-{1
-    LET a = VEC 1200
-       LET d = VEC 100
-       LET K = VEC 150
-       LET l = VEC 150
-
-       dvec, dvecs, dvece, dvecp, dvect := a, 3, 3, 3, 1200
-       dvec[0], dvec[1], dvec[2] := 0, 0, 0
-
-       GLOBDECL, GLOBDECLS, GLOBDECLT := d, 0, 100
-
-       caseK, caseL, caseP, caseT, caseB := K, l, 0, 150, -1
-       endcaselabel, DEFAULTLABEL := 0, 0
-
-       RESULTLABEL, breaklabel, LOOPLABEL := -1, -1, -1
-
-       comcount = 0;
-       currentbranch = x;
-
-       ocount := 0
-
-       PARAMNUMBER := 0
-       ssp := savespacesize
-       out2(S_STACK, ssp)
-       decllabels(x)
-       trans(x)
-       out2(S_GLOBAL, GLOBDECLS/2)
-
-    { LET I = 0
-       UNTIL I=GLOBDECLS DO
-          { outn(GLOBDECL[I])
-             outl(GLOBDECL[I+1])
-             I := I + 2  }
-
-       endocode()
-}1
-.
-
-//    TRN1
-
-GET "TRNHDR"
-
-LET trans(x) BE
-  {TR
-next:
- { LET SW = FALSE
-    IF x=0 return
-    currentbranch := x
-
-    SWITCHON H1[x] INTO
-{  default: transreport(100, x); return
-
-    case S_LET:
-      { LET a, b, S, S1 = dvece, dvecs, ssp, 0
-         LET V = vecssp
-         declnames(H2[x])
-         checkdistinct(b, dvecs)
-         dvece := dvecs
-         vecssp, S1 := ssp, ssp
-         ssp := S
-         transdef(H2[x])
-         UNLESS ssp=S1 DO transreport(110, x)
-         UNLESS ssp=vecssp DO { ssp := vecssp
-                                 out2(S_STACK, ssp)  }
-         out1(S_STORE)
-         decllabels(H3[x])
-         trans(H3[x])
-         vecssp := V
-         UNLESS ssp=S DO out2(S_STACK, S)
-         dvece, dvecs, ssp := a, b, S
-         return   }
-
-    case S_STATIC:
-    case S_GLOBAL:
-    case S_MANIFEST:
-     {1 LET a, b, S = dvece, dvecs, ssp
-         AND OP = H1[x]
-         AND y = H2[x]
-
-         IF OP=S_MANIFEST DO OP := S_NUMBER
-
-         UNTIL y=0 DO
-           { TEST OP=S_STATIC THEN
-                { LET M = nextparam()
-                   addname(H3[y], S_LABEL, M)
-                   compdatalab(M)
-                   out2(S_ITEMN, evalconst(H4[y]))  }
-
-                OR addname(H3[y], OP, evalconst(H4[y]))
-
-              y := H2[y]
-              dvece := dvecs  }
-
-         decllabels(H3[x])
-         trans(H3[x])
-         dvece, dvecs, ssp := a, b, S
-         return   }1
-
-
-    case S_ASS:
-       assign(H2[x], H3[x])
-       return
-
-    case S_RTAP:
-     { LET S = ssp
-        ssp := ssp+savespacesize
-        out2(S_STACK, ssp)
-        loadlist(H3[x])
-        load(H2[x])
-        out2(S_RTAP, S)
-        ssp := S
-        return  }
-
-    case S_GOTO:
-        load(H2[x])
-        out1(S_GOTO)
-        ssp := ssp-1
-        return
-
-    case S_COLON:
-        complab(H4[x])
-        trans(H3[x])
-        return
-
-    case S_UNLESS: SW := TRUE
-    case S_IF:
-     { LET l = nextparam()
-        jumpcond(H2[x], SW, l)
-        trans(H3[x])
-        complab(l)
-        return   }
-
-    case S_TEST:
-     { LET l, M = nextparam(), nextparam()
-        jumpcond(H2[x], FALSE, l)
-        trans(H3[x])
-        compjump(M)
-        complab(l)
-        trans(H4[x])
-        complab(M)
-        return   }
-
-    case S_LOOP:
-        IF LOOPLABEL<0 DO transreport(104, x)
-        IF LOOPLABEL=0 DO LOOPLABEL := nextparam()
-        compjump(LOOPLABEL)
-        return
-
-    case S_BREAK:
-        IF breaklabel<0 DO transreport(104, x)
-        IF breaklabel=0 DO breaklabel := nextparam()
-        compjump(breaklabel)
-        return
-
-    case S_RETURN: out1(S_RTRN)
-                   return
-
-    case S_FINISH: out1(S_FINISH)
-                   return
-
-    case S_RESULTIS:
-        IF RESULTLABEL<0 DO transreport(104, x)
-        load(H2[x])
-        out2p(S_RES, RESULTLABEL)
-        ssp := ssp - 1
-        return
-
-    case S_WHILE: SW := TRUE
-    case S_UNTIL:
-     { LET l, M = nextparam(), nextparam()
-        LET BL, LL = breaklabel, LOOPLABEL
-        breaklabel, LOOPLABEL := 0, M
-
-        compjump(M)
-        complab(l)
-        trans(H3[x])
-        complab(M)
-        jumpcond(H2[x], SW, l)
-        UNLESS breaklabel=0 DO complab(breaklabel)
-        breaklabel, LOOPLABEL := BL, LL
-        return   }
-
-    case S_REPEATWHILE: SW := TRUE
-    case S_REPEATUNTIL:
-    case S_REPEAT:
-     { LET l, BL, LL = nextparam(), breaklabel, LOOPLABEL
-        breaklabel, LOOPLABEL := 0, 0
-        complab(l)
-        TEST H1[x]=S_REPEAT
-            THEN { LOOPLABEL := l
-                    trans(H2[x])
-                    compjump(l)  }
-              OR { trans(H2[x])
-                    UNLESS LOOPLABEL=0 DO complab(LOOPLABEL)
-                    jumpcond(H3[x], SW, l)  }
-        UNLESS breaklabel=0 DO complab(breaklabel)
-        breaklabel, LOOPLABEL := BL, LL
-        return   }
-
-    case S_case:
-     { LET l, K = nextparam(), evalconst(H2[x])
-        IF caseP>=caseT DO transreport(141, x)
-        IF caseB<0 DO transreport(105, x)
-        FOR I = caseB TO caseP-1 DO
-                    IF caseK[I]=K DO transreport(106, x)
-        caseK[caseP] := K
-        caseL[caseP] := l
-        caseP := caseP + 1
-        complab(l)
-        trans(H3[x])
-        return   }
-
-    case S_DEFAULT:
-        IF caseB<0 DO transreport(105, x)
-        UNLESS DEFAULTLABEL=0 DO transreport(101, x)
-        DEFAULTLABEL := nextparam()
-        complab(DEFAULTLABEL)
-        trans(H2[x])
-        return
-
-    case S_ENDCASE:
-        IF caseB<0 DO transreport(105, x)
-        compjump(endcaselabel)
-        return
-
-    case S_SWITCHON:
-        transswitch(x)
-        return
-
-    case S_FOR:
-        transfor(x)
-        return
-
-    case S_SEQ:
-        trans(H2[x])
-        comcount := comcount + 1;
-        x := H3[x]
-        goto next
-}TR
-.
-
-//    TRN2
-
-GET "TRNHDR"
-
-LET declnames(x) BE UNLESS x=0 SWITCHON H1[x] INTO
-
-     {  default: transreport(102, currentbranch)
-                  return
-
-         case S_VECDEF: case S_VALDEF:
-               decldyn(H2[x])
-               return
-
-         case S_RTDEF: case S_FNDEF:
-               H5[x] := nextparam()
-               declstat(H2[x], H5[x])
-               return
-
-         case S_AND:
-               declnames(H2[x])
-               declnames(H3[x])
-               return    }
-
-
-AND decldyn(x) BE UNLESS x=0 DO
-
-    { IF H1[x]=S_NAME DO
-          { addname(x, S_LOCAL, ssp)
-             ssp := ssp + 1
-             return   }
-
-       IF H1[x]=S_COMMA DO
-          { addname(H2[x], S_LOCAL, ssp)
-             ssp := ssp + 1
-             decldyn(H3[x])
-             return  }
-
-       transreport(103, x)   }
-
-AND declstat(x, l) BE
-    {1 LET T = cellwithname(x)
-
-       IF dvec[T+1]=S_GLOBAL DO
-          { LET n = dvec[T+2]
-             addname(x, S_GLOBAL, n)
-             IF GLOBDECLS>=GLOBDECLT DO transreport(144, x)
-             GLOBDECL[GLOBDECLS] := n
-             GLOBDECL[GLOBDECLS+1] := l
-             GLOBDECLS := GLOBDECLS + 2
-             return  }
-
-
-    { LET M = nextparam()
-       addname(x, S_LABEL, M)
-       compdatalab(M)
-       out2p(S_ITEML, l)    }1
-
-
-AND decllabels(x) BE
-    { LET b = dvecs
-       scanlabels(x)
-       checkdistinct(b, dvecs)
-       dvece := dvecs   }
-
-
-AND checkdistinct(E, S) BE
-       UNTIL E=S DO
-          { LET P = E + 3
-             AND n = dvec[E]
-             WHILE P<S DO
-                { IF dvec[P]=n DO transreport(142, n)
-                   P := P + 3  }
-             E := E + 3  }
-
-
-AND addname(n, P, a) BE
-    { IF dvecs>=dvect DO transreport(143, currentbranch)
-       dvec[dvecs], dvec[dvecs+1], dvec[dvecs+2] := n, P, a
-       dvecs := dvecs + 3  }
-
-
-AND scanlabels(x) BE UNLESS x=0 SWITCHON H1[x] INTO
-
-    { default: return
-
-       case S_COLON:
-            H4[x] := nextparam()
-            declstat(H2[x], H4[x])
-
-       case S_IF: case S_UNLESS: case S_WHILE: case S_UNTIL:
-       case S_SWITCHON: case S_case:
-            scanlabels(H3[x])
-            return
-
-       case S_SEQ:
-            scanlabels(H3[x])
-
-       case S_REPEAT:
-       case S_REPEATWHILE: case S_REPEATUNTIL: case S_DEFAULT:
-            scanlabels(H2[x])
-            return
-
-       case S_TEST:
-            scanlabels(H3[x])
-            scanlabels(H4[x])
-            return    }
-
-
-AND transdef(x) BE
-    {1 transdyndefs(x)
-        IF statdefs(x) DO
-           { LET l, S= nextparam(), ssp
-              compjump(l)
-              transstatdefs(x)
-              ssp := S
-              out2(S_STACK, ssp)
-              complab(l)  }1
-
-
-AND transdyndefs(x) BE
-        SWITCHON H1[x] INTO
-     { case S_AND:
-            transdyndefs(H2[x])
-            transdyndefs(H3[x])
-            return
-
-        case S_VECDEF:
-            out2(S_LLP, vecssp)
-            ssp := ssp + 1
-            vecssp := vecssp + 1 + evalconst(H3[x])
-            return
-
-        case S_VALDEF: loadlist(H3[x])
-                       return
-
-        default: return  }
-
-AND transstatdefs(x) BE
-        SWITCHON H1[x] INTO
-     { case S_AND:
-             transstatdefs(H2[x])
-             transstatdefs(H3[x])
-             return
-
-        case S_FNDEF: case S_RTDEF:
-         {2 LET a, b, C = dvece, dvecs, dvecp
-             AND BL, LL = breaklabel, LOOPLABEL
-             AND RL, CB = RESULTLABEL, caseB
-             breaklabel, LOOPLABEL := -1, -1
-             RESULTLABEL, caseB := -1, -1
-
-             compentry(H2[x], H5[x])
-             ssp := savespacesize
-
-             dvecp := dvecs
-             decldyn(H3[x])
-             checkdistinct(b, dvecs)
-             dvece := dvecs
-             decllabels(H4[x])
-
-             out2(S_SAVE, ssp)
-
-             TEST H1[x]=S_FNDEF
-                THEN { load(H4[x]); out1(S_FNRN)  }
-                  OR { trans(H4[x]); out1(S_RTRN)  }
-
-             out2(S_ENDPROC, 0)
-
-             breaklabel, LOOPLABEL := BL, LL
-             RESULTLABEL, caseB := RL, CB
-             dvece, dvecs, dvecp := a, b, C   }2
-
-        default: return   }
-
-AND statdefs(x) = H1[x]=S_FNDEF \/ H1[x]=S_RTDEF -> TRUE,
-                  H1[x] NE S_AND -> FALSE,
-                  statdefs(H2[x]) -> TRUE,
-                  statdefs(H3[x])
-
-
-.
-
-//    TRN3
-
-
-GET "TRNHDR"
-
-LET jumpcond(x, b, l) BE
-{JC LET SW = b
-     SWITCHON H1[x] INTO
-     { case S_FALSE: b := NOT b
-        case S_TRUE: IF b DO compjump(l)
-                     return
-
-        case S_NOT: jumpcond(H2[x], NOT b, l)
-                    return
-
-        case S_LOGAND: SW := NOT SW
-        case S_LOGOR:
-         TEST SW THEN { jumpcond(H2[x], b, l)
-                         jumpcond(H3[x], b, l)  }
-
-                   OR { LET M = nextparam()
-                         jumpcond(H2[x], NOT b, M)
-                         jumpcond(H3[x], b, l)
-                         complab(M)  }
-
-         return
-
-        default: load(x)
-                 out2p(b -> S_JT, S_JF, l)
-                 ssp := ssp - 1
-                 return     }JC
-
-AND transswitch(x) BE
-    {1 LET P, b, DL = caseP, caseB, DEFAULTLABEL
-        AND ECL = endcaselabel
-        LET l = nextparam()
-        endcaselabel := nextparam()
-        caseB := caseP
-
-        compjump(l)
-        DEFAULTLABEL := 0
-        trans(H3[x])
-        compjump(endcaselabel)
-
-        complab(l)
-        load(H2[x])
-        IF DEFAULTLABEL=0 DO DEFAULTLABEL := endcaselabel
-        out3p(S_SWITCHON, caseP-P, DEFAULTLABEL)
-
-        FOR I = caseB TO caseP-1 DO { outn(caseK[I])
-                                       outl(caseL[I])  }
-
-        ssp := ssp - 1
-        complab(endcaselabel)
-        endcaselabel := ECL
-        caseP, caseB, DEFAULTLABEL := P, b, DL   }1
-
-AND transfor(x) BE
-     { LET a, b = dvece, dvecs
-        LET l, M = nextparam(), nextparam()
-        LET BL, LL = breaklabel, LOOPLABEL
-        LET K, n = 0, 0
-        LET STEP = 1
-        LET S = ssp
-        breaklabel, LOOPLABEL := 0, 0
-
-        addname(H2[x], S_LOCAL, S)
-        dvece := dvecs
-        load(H3[x])
-
-        TEST H1[H4[x]]=S_NUMBER
-            THEN K, n := S_LN, H2[H4[x]]
-              OR { K, n := S_LP, ssp
-                    load(H4[x])  }
-
-        UNLESS H5[x]=0 DO STEP := evalconst(H5[x])
-
-        out1(S_STORE)
-        compjump(l)
-        decllabels(H6[x])
-        complab(M)
-        trans(H6[x])
-        UNLESS LOOPLABEL=0 DO complab(LOOPLABEL)
-        out2(S_LP, S); out2(S_LN, STEP); out1(S_PLUS); out2(S_SP, S)
-        complab(l)
-        out2(S_LP, S); out2(K, n); out1(STEP<0 -> S_GE, S_LE)
-        out2p(S_JT, M)
-
-        UNLESS breaklabel=0 DO complab(breaklabel)
-        breaklabel, LOOPLABEL, ssp := BL, LL, S
-        out2(S_STACK, ssp)
-        dvece, dvecs := a, b  }
-
-.
-
-//    TRN4
-
-
-GET "TRNHDR"
-
-void load(x)
-    int *x;
-{
-    int op;
-
-    if (x == 0) {
-        transreport(148, currentbranch);
-        loadzero();
-        return;
-    }
-
-    op = H1[x];
-
-    switch (op) {
-    default:
-        transreport(147, currentbranch);
-        loadzero();
-        return;
-
-    case S_DIV:    case S_REM:    case S_MINUS:
-    case S_LS:     case S_GR:     case S_LE:    case S_GE:
-    case S_LSHIFT: case S_RSHIFT:
-        load(H2[x]);
-        load(H3[x]);
-        out1(op);
-        ssp = ssp - 1;
-        return;
-
-    case S_VECAP:  case S_MULT:  case S_PLUS: case S_EQ:  case S_NE:
-    case S_LOGAND: case S_LOGOR: case S_EQV:  case S_NEQV: {
-        int a = H2[x];
-        int b = H3[x];
-        if (H1[a] == S_NAME || H1[a] == S_NUMBER) {
-            a = H3[x];
-            b = H2[x];
-        }
-        load(a);
-        load(b);
-        if (op == S_VECAP) {
-            out1(S_PLUS);
-            op = S_RV;
-        }
-        out1(op);
-        ssp = ssp - 1;
-        return;
-    }
-
-    case S_NEG: case S_NOT: case S_RV:
-        load(H2[x]);
-        out1(op);
-        return;
-
-    case S_TRUE: case S_FALSE: case S_QUERY:
-        out1(op);
-        ssp = ssp + 1;
-        return;
-
-    case S_LV:
-        loadlv(H2[x]);
-        return;
-
-    case S_NUMBER:
-        out2(S_LN, H2[x])
-        ssp := ssp + 1
-        return
-
-    case S_STRING:
-     { LET S = @H2[x]
-        out2(S_LSTR, getbyte(S, 0))
-        FOR I = 1 TO getbyte(S, 0) DO outc(getbyte(S, I))
-        wrc('*S')
-        ssp := ssp + 1
-        return   }
-
-    case S_NAME:
-         transname(x, S_LP, S_LG, S_LL, S_LN)
-         ssp := ssp + 1
-         return
-
-    case S_VALOF:
-     { LET RL = RESULTLABEL
-        LET a, b = dvecs, dvece
-        decllabels(H2[x])
-        RESULTLABEL := nextparam()
-        trans(H2[x])
-        complab(RESULTLABEL)
-        out2(S_RSTACK, ssp)
-        ssp := ssp + 1
-        dvecs, dvece := a, b
-        RESULTLABEL := RL
-        return   }
-
-
-    case S_FNAP:
-     { LET S = ssp
-        ssp := ssp + savespacesize
-        out2(S_STACK, ssp)
-        loadlist(H3[x])
-        load(H2[x])
-        out2(S_FNAP, S)
-        ssp := S + 1
-        return   }
-
-    case S_COND:
-     { LET l, M = nextparam(), nextparam()
-        LET S = ssp
-        jumpcond(H2[x], FALSE, M)
-        load(H3[x])
-        compjump(l)
-        ssp := S; out2(S_STACK, ssp)
-        complab(M)
-        load(H4[x])
-        complab(l)
-        return   }
-
-    case S_TABLE:
-     { LET M = nextparam()
-        compdatalab(M)
-        x := H2[x]
-        WHILE H1[x]=S_COMMA DO
-              { out2(S_ITEMN, evalconst(H2[x]))
-                 x := H3[x]   }
-        out2(S_ITEMN, evalconst(x))
-        out2p(S_LLL, M)
-        ssp := ssp + 1
-        return
-    }
-}
-
-AND loadlv(x) BE
-    {1 IF x=0 goto ERR
-
-        SWITCHON H1[x] INTO
-     { default:
-        ERR:     transreport(113, currentbranch)
-                 loadzero()
-                 return
-
-        case S_NAME:
-              transname(x, S_LLP, S_LLG, S_LLL, 0)
-              ssp := ssp + 1
-              return
-
-        case S_RV:
-            load(H2[x])
-            return
-
-        case S_VECAP:
-         { LET a, b = H2[x], H3[x]
-            IF H1[a]=S_NAME DO a, b := H3[x], H2[x]
-            load(a)
-            load(b)
-            out1(S_PLUS)
-            ssp := ssp - 1
-            return   }  }1
-
-AND loadzero() BE { out2(S_LN, 0)
-                     ssp := ssp + 1  }
-
-AND loadlist(x) BE UNLESS x=0 DO
-    { UNLESS H1[x]=S_COMMA DO { load(x); return  }
-
-       loadlist(H2[x])
-       loadlist(H3[x])  }
-.
-
-//    TRN5
-
-GET "TRNHDR"
-
-LET evalconst(x) = VALOF
-    {1 IF x=0 DO { transreport(117, currentbranch)
-                     RESULTIS 0  }
-
-        SWITCHON H1[x] INTO
-     { default: transreport(118, x)
-                 RESULTIS 0
-
-        case S_NAME:
-         { LET T = cellwithname(x)
-            IF dvec[T+1]=S_NUMBER RESULTIS dvec[T+2]
-            transreport(119, x)
-            RESULTIS 0  }
-
-        case S_NUMBER: RESULTIS H2[x]
-        case S_TRUE: RESULTIS TRUE
-        case S_FALSE: RESULTIS FALSE
-
-        case S_NEG: RESULTIS - evalconst(H2[x])
-
-        case S_MULT: RESULTIS evalconst(H2[x]) * evalconst(H3[x])
-        case S_DIV:  RESULTIS evalconst(H2[x]) / evalconst(H3[x])
-        case S_PLUS: RESULTIS evalconst(H2[x]) + evalconst(H3[x])
-        case S_MINUS:RESULTIS evalconst(H2[x]) - evalconst(H3[x])
-
-}1
 #endif
 
 void wrc(ch)
@@ -2137,7 +1387,7 @@ void plist(x, n, d)
     case S_LSHIFT: case S_RSHIFT: case S_LOGAND: case S_LOGOR:
     case S_EQV: case S_NEQV: case S_COMMA:
     case S_AND: case S_VALDEF: case S_VECDEF:
-    case S_ASS: case S_RTAP: case S_COLON: case S_IF: case S_UNLESS:
+    case S_ASSIGN: case S_RTAP: case S_COLON: case S_IF: case S_UNLESS:
     case S_WHILE: case S_UNTIL: case S_REPEATWHILE:
     case S_REPEATUNTIL:
     case S_SWITCHON: case S_CASE: case S_SEQ: case S_LET:
@@ -2163,13 +1413,14 @@ void plist(x, n, d)
         for (i = 2; i <= size; i++) {
             newline();
             printf("%*s*-", n+n, "");
-            plist(H1[x+i-1], n+1, d);
+            plist((int*) H1[x+i-1], n+1, d);
         }
         return;
     }
 }
 
 void transreport(n, x)
+    int *x;
 {
     reportcount = reportcount + 1;
     if (reportcount >= reportmax) {
@@ -2366,7 +1617,146 @@ void compjump(l)
     out2p(S_JUMP, l);
 }
 
+void addname(n, p, a)
+    int *n;
+{
+    if (dvecs >= dvect)
+        transreport(143, currentbranch);
+    dvec[dvecs]   = (int) n;
+    dvec[dvecs+1] = p;
+    dvec[dvecs+2] = a;
+    dvecs = dvecs + 3;
+}
+
+void declstat(x, l)
+    int *x;
+{
+    int t = cellwithname(x);
+    int m;
+
+    if (dvec[t+1] == S_GLOBAL) {
+        int n = dvec[t+2];
+
+        addname(x, S_GLOBAL, n);
+        if (globdecls >= globdeclt)
+            transreport(144, x);
+        globdecl[globdecls] = n;
+        globdecl[globdecls+1] = l;
+        globdecls = globdecls + 2;
+        return;
+    }
+
+    m = nextparam();
+    addname(x, S_LABEL, m);
+    compdatalab(m);
+    out2p(S_ITEML, l);
+}
+
+void decldyn(x)
+    int *x;
+{
+    if (x != 0) {
+        if (H1[x] == S_NAME) {
+            addname(x, S_LOCAL, ssp);
+            ssp = ssp + 1;
+            return;
+        }
+        if (H1[x] == S_COMMA) {
+            addname((int*) H2[x], S_LOCAL, ssp);
+            ssp = ssp + 1;
+            decldyn((int*) H3[x]);
+            return;
+        }
+        transreport(103, x);
+    }
+}
+
+void declnames(x)
+    int *x;
+{
+    if (x != 0) {
+        switch (H1[x]) {
+        default:
+            transreport(102, currentbranch);
+            return;
+
+        case S_VECDEF: case S_VALDEF:
+            decldyn((int*) H2[x]);
+            return;
+
+        case S_RTDEF: case S_FNDEF:
+            H5[x] = nextparam();
+            declstat((int*) H2[x], H5[x]);
+            return;
+
+        case S_AND:
+            declnames((int*) H2[x]);
+            declnames((int*) H3[x]);
+            return;
+        }
+    }
+}
+
+void scanlabels(x)
+    int *x;
+{
+    if (x != 0) {
+        switch (H1[x]) {
+        default:
+            return;
+
+        case S_COLON:
+            H4[x] = nextparam();
+            declstat((int*) H2[x], H4[x]);
+
+        case S_IF: case S_UNLESS: case S_WHILE: case S_UNTIL:
+        case S_SWITCHON: case S_CASE:
+            scanlabels((int*) H3[x]);
+            return;
+
+        case S_SEQ:
+            scanlabels((int*) H3[x]);
+
+        case S_REPEAT:
+        case S_REPEATWHILE: case S_REPEATUNTIL: case S_DEFAULT:
+            scanlabels((int*) H2[x]);
+            return;
+
+        case S_TEST:
+            scanlabels((int*) H3[x]);
+            scanlabels((int*) H4[x]);
+            return;
+        }
+    }
+}
+
+void checkdistinct(e, s)
+{
+    while (e != s) {
+        int p = e + 3;
+        int n = dvec[e];
+
+        while (p < s) {
+            if (dvec[p] == n)
+                transreport(142, (int*) n);
+            p = p + 3;
+        }
+        e = e + 3;
+    }
+}
+
+void decllabels(x)
+    int *x;
+{
+    int b = dvecs;
+
+    scanlabels(x);
+    checkdistinct(b, dvecs);
+    dvece = dvecs;
+}
+
 void transname(x, p, g, l, n)
+    int *x;
 {
     int t = cellwithname(x);
     int k = dvec[t+1];
@@ -2402,6 +1792,726 @@ void transname(x, p, g, l, n)
     }
 }
 
+void jumpcond(x, b, l)
+    int *x;
+{
+    int sw = b;
+
+    switch (H1[x]) {
+    case S_FALSE:
+        b = ! b;
+    case S_TRUE:
+        if (b)
+            compjump(l);
+        return;
+
+    case S_NOT:
+        jumpcond((int*) H2[x], ! b, l);
+        return;
+
+    case S_LOGAND:
+        sw = ! sw;
+    case S_LOGOR:
+        if (sw) {
+            jumpcond((int*) H2[x], b, l);
+            jumpcond((int*) H3[x], b, l);
+        } else {
+            int m = nextparam();
+            jumpcond((int*) H2[x], ! b, m);
+            jumpcond((int*) H3[x], b, l);
+            complab(m);
+        }
+        return;
+
+    default:
+        load(x);
+        out2p(b ? S_JT : S_JF, l);
+        ssp = ssp - 1;
+        return;
+    }
+}
+
+int evalconst(x)
+    int *x;
+{
+    if (x == 0) {
+        transreport(117, currentbranch);
+        return 0;
+    }
+    switch (H1[x]) {
+    default:
+        transreport(118, x);
+        return 0;
+
+    case S_NAME: {
+        int t = cellwithname(x);
+        if (dvec[t+1] == S_NUMBER)
+            return dvec[t+2];
+        transreport(119, x);
+        return 0;
+    }
+    case S_NUMBER: return H2[x];
+    case S_TRUE:   return TRUE;
+    case S_FALSE:  return FALSE;
+    case S_NEG:    return - evalconst((int*) H2[x]);
+    case S_MULT:   return evalconst((int*) H2[x]) * evalconst((int*) H3[x]);
+    case S_DIV:    return evalconst((int*) H2[x]) / evalconst((int*) H3[x]);
+    case S_PLUS:   return evalconst((int*) H2[x]) + evalconst((int*) H3[x]);
+    case S_MINUS:  return evalconst((int*) H2[x]) - evalconst((int*) H3[x]);
+    }
+
+}
+
+void transdyndefs(x)
+    int *x;
+{
+    switch (H1[x]) {
+    case S_AND:
+        transdyndefs((int*) H2[x]);
+        transdyndefs((int*) H3[x]);
+        return;
+
+    case S_VECDEF:
+        out2(S_LLP, vecssp);
+        ssp = ssp + 1;
+        vecssp = vecssp + 1 + evalconst((int*) H3[x]);
+        return;
+
+    case S_VALDEF:
+        loadlist((int*) H3[x]);
+        return;
+
+    default:
+        return;
+    }
+}
+
+void transstatdefs(x)
+    int *x;
+{
+    switch (H1[x]) {
+    case S_AND:
+        transstatdefs((int*) H2[x]);
+        transstatdefs((int*) H3[x]);
+        return;
+
+    case S_FNDEF: case S_RTDEF: {
+        int a = dvece;
+        int b = dvecs;
+        int c = dvecp;
+        int bl = breaklabel;
+        int ll = looplabel;
+        int rl = resultlabel;
+        int cb = caseb;
+
+        breaklabel = -1;
+        looplabel = -1;
+        resultlabel = -1;
+        caseb = -1;
+
+        compentry((int*) H2[x], H5[x]);
+        ssp = savespacesize;
+
+        dvecp = dvecs;
+        decldyn((int*) H3[x]);
+        checkdistinct(b, dvecs);
+        dvece = dvecs;
+        decllabels((int*) H4[x]);
+
+        out2(S_SAVE, ssp);
+
+        if (H1[x] == S_FNDEF) {
+            load((int*) H4[x]);
+            out1(S_FNRN);
+        } else {
+            trans((int*) H4[x]);
+            out1(S_RTRN);
+        }
+        out2(S_ENDPROC, 0);
+
+        breaklabel = bl;
+        looplabel = ll;
+        resultlabel = rl;
+        caseb = cb;
+        dvece = a;
+        dvecs = b;
+        dvecp = c;
+    }
+    default:
+        return;
+    }
+}
+
+int statdefs(x)
+    int *x;
+{
+    if (H1[x] == S_FNDEF || H1[x] == S_RTDEF)
+        return TRUE;
+    if (H1[x] != S_AND)
+        return FALSE;
+    if (statdefs((int*) H2[x]))
+        return TRUE;
+    return statdefs((int*) H3[x]);
+}
+
+void transdef(x)
+    int *x;
+{
+    transdyndefs(x);
+    if (statdefs(x)) {
+        int l = nextparam();
+        int s = ssp;
+
+        compjump(l);
+        transstatdefs(x);
+        ssp = s;
+        out2(S_STACK, ssp);
+        complab(l);
+    }
+}
+
+void transswitch(x)
+    int *x;
+{
+    int p = casep;
+    int b = caseb;
+    int dl = defaultlabel;
+    int ecl = endcaselabel;
+    int l = nextparam();
+    int i;
+
+    endcaselabel = nextparam();
+    caseb = casep;
+
+    compjump(l);
+    defaultlabel = 0;
+    trans((int*) H3[x]);
+    compjump(endcaselabel);
+
+    complab(l);
+    load((int*) H2[x]);
+    if (defaultlabel == 0)
+        defaultlabel = endcaselabel;
+    out3p(S_SWITCHON, casep-p, defaultlabel);
+
+    for (i = caseb; i<casep; i++) {
+        outn(casek[i]);
+        outl(casel[i]);
+    }
+    ssp = ssp - 1;
+    complab(endcaselabel);
+    endcaselabel = ecl;
+    casep = p;
+    caseb = b;
+    defaultlabel = dl;
+}
+
+void transfor(x)
+    int *x;
+{
+    int a = dvece;
+    int b = dvecs;
+    int l = nextparam();
+    int m = nextparam();
+    int bl = breaklabel;
+    int ll = looplabel;
+    int k = 0;
+    int n = 0;
+    int step = 1;
+    int s = ssp;
+    int *h4 = (int*) H4[x];
+
+    breaklabel = 0;
+    looplabel = 0;
+
+    addname((int*) H2[x], S_LOCAL, s);
+    dvece = dvecs;
+    load((int*) H3[x]);
+
+    if (H1[h4] == S_NUMBER) {
+        k = S_LN;
+        n = H2[h4];
+    } else {
+        k = S_LP;
+        n = ssp;
+        load(h4);
+    }
+
+    if (H5[x] != 0)
+        step = evalconst((int*) H5[x]);
+
+    out1(S_STORE);
+    compjump(l);
+    decllabels((int*) H6[x]);
+    complab(m);
+    trans((int*) H6[x]);
+    if (looplabel != 0)
+        complab(looplabel);
+    out2(S_LP, s);
+    out2(S_LN, step);
+    out1(S_PLUS);
+    out2(S_SP, s);
+    complab(l);
+    out2(S_LP, s);
+    out2(k, n);
+    out1(step<0 ? S_GE : S_LE);
+    out2p(S_JT, m);
+
+    if (breaklabel != 0)
+        complab(breaklabel);
+    breaklabel = bl;
+    looplabel = ll;
+    ssp = s;
+    out2(S_STACK, ssp);
+    dvece = a;
+    dvecs = b;
+}
+
+void trans(x)
+    int *x;
+{
+    int sw;
+next:
+    if (x == 0)
+        return;
+    currentbranch = x;
+    sw = FALSE;
+
+    switch (H1[x]) {
+    default:
+        transreport(100, x);
+        return;
+
+    case S_LET: {
+        int a = dvece;
+        int b = dvecs;
+        int s = ssp;
+        int s1 = 0;
+        int v = vecssp;
+
+        declnames((int*) H2[x]);
+        checkdistinct(b, dvecs);
+        dvece = dvecs;
+        vecssp = ssp;
+        s1 = ssp;
+        ssp = s;
+        transdef((int*) H2[x]);
+        if (ssp != s1)
+            transreport(110, x);
+        if (ssp != vecssp) {
+            ssp = vecssp;
+            out2(S_STACK, ssp);
+        }
+        out1(S_STORE);
+        decllabels((int*) H3[x]);
+        trans((int*) H3[x]);
+        vecssp = v;
+        if (ssp != s)
+            out2(S_STACK, s);
+        dvece = a;
+        dvecs = b;
+        ssp = s;
+        return;
+    }
+    case S_STATIC:
+    case S_GLOBAL:
+    case S_MANIFEST: {
+        int a = dvece;
+        int b = dvecs;
+        int s = ssp;
+        int op = H1[x];
+        int *y = (int*) H2[x];
+
+        if (op == S_MANIFEST)
+            op = S_NUMBER;
+
+        while (y != 0) {
+            if (op == S_STATIC) {
+                int m = nextparam();
+
+                addname((int*) H3[y], S_LABEL, m);
+                compdatalab(m);
+                out2(S_ITEMN, evalconst((int*) H4[y]));
+            } else
+                addname((int*) H3[y], op, evalconst((int*) H4[y]));
+
+            y = (int*) H2[y];
+            dvece = dvecs;
+        }
+        decllabels((int*) H3[x]);
+        trans((int*) H3[x]);
+        dvece = a;
+        dvecs = b;
+        ssp = s;
+        return;
+    }
+    case S_ASSIGN:
+       assign((int*) H2[x], (int*) H3[x]);
+       return;
+
+    case S_RTAP: {
+        int s = ssp;
+
+        ssp = ssp + savespacesize;
+        out2(S_STACK, ssp);
+        loadlist((int*) H3[x]);
+        load((int*) H2[x]);
+        out2(S_RTAP, s);
+        ssp = s;
+        return;
+    }
+    case S_GOTO:
+        load((int*) H2[x]);
+        out1(S_GOTO);
+        ssp = ssp-1;
+        return;
+
+    case S_COLON:
+        complab(H4[x]);
+        trans((int*) H3[x]);
+        return;
+
+    case S_UNLESS:
+        sw = TRUE;
+    case S_IF: {
+        int l = nextparam();
+
+        jumpcond((int*) H2[x], sw, l);
+        trans((int*) H3[x]);
+        complab(l);
+        return;
+    }
+    case S_TEST: {
+        int l = nextparam();
+        int m = nextparam();
+
+        jumpcond((int*) H2[x], FALSE, l);
+        trans((int*) H3[x]);
+        compjump(m);
+        complab(l);
+        trans((int*) H4[x]);
+        complab(m);
+        return;
+    }
+    case S_LOOP:
+        if (looplabel < 0)
+            transreport(104, x);
+        if (looplabel == 0)
+            looplabel = nextparam();
+        compjump(looplabel);
+        return;
+
+    case S_BREAK:
+        if (breaklabel < 0)
+            transreport(104, x);
+        if (breaklabel == 0)
+            breaklabel = nextparam();
+        compjump(breaklabel);
+        return;
+
+    case S_RETURN:
+        out1(S_RTRN);
+        return;
+
+    case S_FINISH:
+        out1(S_FINISH);
+        return;
+
+    case S_RESULTIS:
+        if (resultlabel < 0)
+            transreport(104, x);
+        load((int*) H2[x]);
+        out2p(S_RES, resultlabel);
+        ssp = ssp - 1;
+        return;
+
+    case S_WHILE:
+        sw = TRUE;
+    case S_UNTIL: {
+        int l = nextparam();
+        int m = nextparam();
+        int bl = breaklabel;
+        int ll = looplabel;
+        breaklabel = 0;
+        looplabel = m;
+        compjump(m);
+        complab(l);
+        trans((int*) H3[x]);
+        complab(m);
+        jumpcond((int*) H2[x], sw, l);
+        if (breaklabel != 0)
+            complab(breaklabel);
+        breaklabel = bl;
+        looplabel = ll;
+        return;
+    }
+    case S_REPEATWHILE:
+        sw = TRUE;
+    case S_REPEATUNTIL:
+    case S_REPEAT: {
+        int l = nextparam();
+        int bl = breaklabel;
+        int ll = looplabel;
+        breaklabel = 0;
+        looplabel = 0;
+        complab(l);
+        if (H1[x] == S_REPEAT) {
+            looplabel = l;
+            trans((int*) H2[x]);
+            compjump(l);
+        } else {
+            trans((int*) H2[x]);
+            if (looplabel != 0)
+                complab(looplabel);
+            jumpcond((int*) H3[x], sw, l);
+        }
+        if (breaklabel != 0)
+            complab(breaklabel);
+        breaklabel = bl;
+        looplabel = ll;
+        return;
+    }
+    case S_CASE: {
+        int l = nextparam();
+        int k = evalconst((int*) H2[x]);
+        int i;
+
+        if (casep >= caset)
+            transreport(141, x);
+        if (caseb < 0)
+            transreport(105, x);
+        for (i = caseb; i < casep; i++)
+            if (casek[i] == k)
+                transreport(106, x);
+        casek[casep] = k;
+        casel[casep] = l;
+        casep = casep + 1;
+        complab(l);
+        trans((int*) H3[x]);
+        return;
+    }
+    case S_DEFAULT:
+        if (caseb < 0)
+            transreport(105, x);
+        if (defaultlabel != 0)
+            transreport(101, x);
+        defaultlabel = nextparam();
+        complab(defaultlabel);
+        trans((int*) H2[x]);
+        return;
+
+    case S_ENDCASE:
+        if (caseb < 0)
+            transreport(105, x);
+        compjump(endcaselabel);
+        return;
+
+    case S_SWITCHON:
+        transswitch(x);
+        return;
+
+    case S_FOR:
+        transfor(x);
+        return;
+
+    case S_SEQ:
+        trans((int*) H2[x]);
+        comcount = comcount + 1;
+        x = (int*) H3[x];
+        goto next;
+    }
+}
+
+void loadzero()
+{
+    out2(S_LN, 0);
+    ssp = ssp + 1;
+}
+
+void load(x)
+    int *x;
+{
+    int op, i;
+
+    if (x == 0) {
+        transreport(148, currentbranch);
+        loadzero();
+        return;
+    }
+
+    op = H1[x];
+
+    switch (op) {
+    default:
+        transreport(147, currentbranch);
+        loadzero();
+        return;
+
+    case S_DIV:    case S_REM:    case S_MINUS:
+    case S_LS:     case S_GR:     case S_LE:    case S_GE:
+    case S_LSHIFT: case S_RSHIFT:
+        load((int*) H2[x]);
+        load((int*) H3[x]);
+        out1(op);
+        ssp = ssp - 1;
+        return;
+
+    case S_VECAP:  case S_MULT:  case S_PLUS: case S_EQ:  case S_NE:
+    case S_LOGAND: case S_LOGOR: case S_EQV:  case S_NEQV: {
+        int *a = (int*) H2[x];
+        int *b = (int*) H3[x];
+        if (H1[a] == S_NAME || H1[a] == S_NUMBER) {
+            a = (int*) H3[x];
+            b = (int*) H2[x];
+        }
+        load(a);
+        load(b);
+        if (op == S_VECAP) {
+            out1(S_PLUS);
+            op = S_RV;
+        }
+        out1(op);
+        ssp = ssp - 1;
+        return;
+    }
+    case S_NEG: case S_NOT: case S_RV:
+        load((int*) H2[x]);
+        out1(op);
+        return;
+
+    case S_TRUE: case S_FALSE: case S_QUERY:
+        out1(op);
+        ssp = ssp + 1;
+        return;
+
+    case S_LV:
+        loadlv((int*) H2[x]);
+        return;
+
+    case S_NUMBER:
+        out2(S_LN, H2[x]);
+        ssp = ssp + 1;
+        return;
+
+    case S_STRING: {
+        int *s = &H2[x];
+        out2(S_LSTR, getbyte(s, 0));
+        for (i = 1; i <= getbyte(s, 0); i++)
+            outc(getbyte(s, i));
+        wrc(' ');
+        ssp = ssp + 1;
+        return;
+    }
+    case S_NAME:
+         transname(x, S_LP, S_LG, S_LL, S_LN);
+         ssp = ssp + 1;
+         return;
+
+    case S_VALOF: {
+        int rl = resultlabel;
+        int a = dvecs;
+        int b = dvece;
+        decllabels((int*) H2[x]);
+        resultlabel = nextparam();
+        trans((int*) H2[x]);
+        complab(resultlabel);
+        out2(S_RSTACK, ssp);
+        ssp = ssp + 1;
+        dvecs = a;
+        dvece = b;
+        resultlabel = rl;
+        return;
+    }
+    case S_FNAP: {
+        int s = ssp;
+        ssp = ssp + savespacesize;
+        out2(S_STACK, ssp);
+        loadlist((int*) H3[x]);
+        load((int*) H2[x]);
+        out2(S_FNAP, s);
+        ssp = s + 1;
+        return;
+    }
+    case S_COND: {
+        int l = nextparam();
+        int m = nextparam();
+        int s = ssp;
+        jumpcond((int*) H2[x], FALSE, m);
+        load((int*) H3[x]);
+        compjump(l);
+        ssp = s;
+        out2(S_STACK, ssp);
+        complab(m);
+        load((int*) H4[x]);
+        complab(l);
+        return;
+    }
+    case S_TABLE: {
+        int m = nextparam();
+        compdatalab(m);
+        x = (int*) H2[x];
+        while (H1[x] == S_COMMA) {
+            out2(S_ITEMN, evalconst((int*) H2[x]));
+            x = (int*) H3[x];
+        }
+        out2(S_ITEMN, evalconst(x));
+        out2p(S_LLL, m);
+        ssp = ssp + 1;
+        return;
+    }
+    }
+}
+
+void loadlv(x)
+    int *x;
+{
+    if (x == 0)
+        goto err;
+
+    switch (H1[x]) {
+    default:
+err:    transreport(113, currentbranch);
+        loadzero();
+        return;
+
+    case S_NAME:
+        transname(x, S_LLP, S_LLG, S_LLL, 0);
+        ssp = ssp + 1;
+        return;
+
+    case S_RV:
+        load((int*) H2[x]);
+        return;
+
+    case S_VECAP: {
+        int *a = (int*) H2[x];
+        int *b = (int*) H3[x];
+        if (H1[a] == S_NAME) {
+            a = (int*) H3[x];
+            b = (int*) H2[x];
+        }
+        load(a);
+        load(b);
+        out1(S_PLUS);
+        ssp = ssp - 1;
+        return;
+    }
+    }
+}
+
+void loadlist(x)
+    int *x;
+{
+    if (x != 0) {
+        if (H1[x] != S_COMMA) {
+            load(x);
+            return;
+        }
+        loadlist((int*) H2[x]);
+        loadlist((int*) H3[x]);
+    }
+}
+
 void assign(x, y)
     int *x, *y;
 {
@@ -2416,8 +2526,8 @@ void assign(x, y)
             transreport(112, currentbranch);
             return;
         }
-        assign(H2[x], H2[y]);
-        assign(H3[x], H3[y]);
+        assign((int*) H2[x], (int*) H2[y]);
+        assign((int*) H3[x], (int*) H3[y]);
         return;
 
     case S_NAME:
@@ -2436,4 +2546,57 @@ void assign(x, y)
     default:
         transreport(109, currentbranch);
     }
+}
+
+void compileae(x)
+    int *x;
+{
+    int a [1200];
+    int d [100];
+    int k [150];
+    int l [150];
+    int i;
+
+    dvec = a;
+    dvecs = 3;
+    dvece = 3;
+    dvecp = 3;
+    dvect = 1200;
+    dvec[0] = 0;
+    dvec[1] = 0;
+    dvec[2] = 0;
+
+    globdecl = d;
+    globdecls = 0;
+    globdeclt = 100;
+
+    casek = k;
+    casel = l;
+    casep = 0;
+    caset = 150;
+    caseb = -1;
+    endcaselabel = 0;
+    defaultlabel = 0;
+
+    resultlabel = -1;
+    breaklabel = -1;
+    looplabel = -1;
+
+    comcount = 0;
+    currentbranch = x;
+
+    ocount = 0;
+
+    paramnumber = 0;
+    ssp = savespacesize;
+    out2(S_STACK, ssp);
+    decllabels(x);
+    trans(x);
+    out2(S_GLOBAL, globdecls/2);
+
+    for (i = 0; i < globdecls; i = i + 2) {
+        outn(globdecl[i]);
+        outl(globdecl[i+1]);
+    }
+    endocode();
 }
