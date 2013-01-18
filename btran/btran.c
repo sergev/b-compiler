@@ -157,32 +157,31 @@ void trans(int *x);
 /*
  * Globals used in lex
  */
-//int chbuf;
+int *chbuf;
 //int decval;
 int *getv;
 int getp;
-//int wordv;
+int *wordv;
 //int wordsize;
 //int charv;
 //int charp;
-//int prsource;
+int prsource;
 int prline;
-//int symb;
+int symb;
 //int wordnode;
-//int ch;
+int ch;
 //int rdtag;
-//int nextsymb;
 //int declsyswords;
-//int nlpending;
+int nlpending;
 //int lookupword;
 //int rch;
 //int pptrace;
 int *option;
 int chcount;
-//int linecount;
+int linecount;
 //int nulltag;
-//int rec_p;
-//int rec_l;
+int rec_p;
+int rec_l;
 
 /*
  * Globals used in CAE
@@ -193,12 +192,9 @@ int chcount;
 //int rname;
 //int rexp;
 //int rdef;
-//int rcom;
 //int rdcdefs;
 //int nametable;
 //int nametablesize;
-//int formtree;
-//int caereport;
 //int checkfor;
 //int ignore;
 //int performget;
@@ -213,7 +209,6 @@ int chcount;
 //int treep;
 //int treevec;
 //int list6;
-//int charcode;
 int reportcount;
 int reportmax;
 FILE *sourcestream;
@@ -248,16 +243,6 @@ int globdecls;
 int globdeclt;
 int comcount;
 
-/*
- * Other globals
- */
-//int chbuf;
-//int prsource;
-//int pptrace;
-//int formtree;
-//int treep;
-//int treevec;
-
 int nextparam()
 {
     paramnumber = paramnumber + 1;
@@ -278,14 +263,14 @@ int cellwithname(n)
 #if 0
 GET "LIBHDR"
 
-comp(V, treemax)
+comp(v, treemax)
 {
-    int b = VEC 63;
+    int b [63];
     int a;
-    chbuf := b
 
+    chbuf := b;
     for (;;) {
-        treep, treevec := V+treemax, V
+        treep, treevec := v+treemax, v
 
         a = formtree()
         IF a=0 break
@@ -329,8 +314,8 @@ int main()
 
         for (;;) {
             ch := getc(sourcestream);
-L:          IF ch='\n' \/ ch=ENDSTREAMCH
-                break
+L:          if (ch =='\n' || ch == EOF)
+                break;
             putchar(ch)
             IF ch='P' DO n := 1
             IF ch='T' DO n := 2
@@ -402,7 +387,7 @@ next:
 
     case '0': case '1': case '2': case '3': case '4':
     case '5': case '6': case '7': case '8': case '9':
-         SYMB := S_NUMBER
+         symb := S_NUMBER
          readnumber(10)
          return
 
@@ -419,23 +404,23 @@ next:
     case 'u': case 'v': case 'w': case 'x': case 'y':
     case 'z':
            rdtag(ch)
-           SYMB := lookupword()
-           IF SYMB=S_GET DO { performget(); goto next  }
+           symb := lookupword()
+           IF symb=S_GET DO { performget(); goto next  }
            return
 
     case '$': rch()
               UNLESS ch='(' \/ ch=')' DO caereport(91)
-              SYMB := ch='(' -> S_LSECT, S_RSECT
+              symb := ch='(' -> S_LSECT, S_RSECT
               rdtag('$')
               lookupword()
               return
 
     case '[':
-    case '(': SYMB := S_LPAREN; goto L
+    case '(': symb := S_LPAREN; goto L
     case ']':
-    case ')': SYMB := S_RPAREN; goto L
+    case ')': symb := S_RPAREN; goto L
 
-    case '#': SYMB := S_NUMBER
+    case '#': symb := S_NUMBER
               rch()
               IF '0'<=ch<='7' DO { readnumber(8); return  }
               IF ch='B' DO { rch(); readnumber(2); return  }
@@ -443,25 +428,26 @@ next:
               IF ch='X' DO { rch(); readnumber(16); return  }
               caereport(33)
 
-    case '?': SYMB := S_QUERY; goto L
-    case '+': SYMB := S_PLUS; goto L
-    case ',': SYMB := S_COMMA; goto L
-    case ';': SYMB := S_SEMICOLON; goto L
-    case '@': SYMB := S_LV; goto L
-    case '&': SYMB := S_LOGAND; goto L
-    case '=': SYMB := S_EQ; goto L
-    case '!': SYMB := S_VECAP; goto L
-    case '_': SYMB := S_ASSIGN; goto L
-    case '*': SYMB := S_MULT; goto L
+    case '?': symb := S_QUERY; goto L
+    case '+': symb := S_PLUS; goto L
+    case ',': symb := S_COMMA; goto L
+    case ';': symb := S_SEMICOLON; goto L
+    case '@': symb := S_LV; goto L
+    case '&': symb := S_LOGAND; goto L
+    case '=': symb := S_EQ; goto L
+    case '!': symb := S_VECAP; goto L
+    case '_': symb := S_ASSIGN; goto L
+    case '*': symb := S_MULT; goto L
 
     case '/': rch()
-              IF ch='\\' DO { SYMB := S_LOGAND; goto L }
+              IF ch='\\' DO { symb := S_LOGAND; goto L }
               IF ch='/' goto COMMENT
-              UNLESS ch='*' DO { SYMB := S_DIV; return  }
+              UNLESS ch='*' DO { symb := S_DIV; return  }
 
               rch()
 
-              UNTIL ch=ENDSTREAMCH DO TEST ch='*'
+              if (ch != EOF) {
+                    TEST ch='*'
 
                     THEN { rch()
                             UNLESS ch='/' LOOP
@@ -470,44 +456,46 @@ next:
 
                     OR { IF ch='\n' DO linecount := linecount+1
                           rch()  }
-
+              }
               caereport(63)
 
 
-    COMMENT: rch() REPEATUNTIL ch='\n' \/ ch=ENDSTREAMCH
+    COMMENT: do {
+                rch();
+             } while (ch != '\n' && ch != EOF);
              goto next
 
     case '|': rch()
               IF ch='|' goto COMMENT
-              SYMB := S_LOGOR
+              symb := S_LOGOR
               return
 
     case '\\': rch()
-              IF ch='/' DO { SYMB := S_LOGOR; goto L  }
-              IF ch='=' DO { SYMB := S_NE; goto L  }
-              SYMB := S_NOT
+              IF ch='/' DO { symb := S_LOGOR; goto L  }
+              IF ch='=' DO { symb := S_NE; goto L  }
+              symb := S_NOT
               return
 
     case '<': rch()
-              IF ch='=' DO { SYMB := S_LE; goto L  }
-              IF ch='<' DO { SYMB := S_LSHIFT; goto L }
-              SYMB := S_LS
+              IF ch='=' DO { symb := S_LE; goto L  }
+              IF ch='<' DO { symb := S_LSHIFT; goto L }
+              symb := S_LS
               return
 
     case '>': rch()
-              IF ch='=' DO { SYMB := S_GE; goto L  }
-              IF ch='>' DO { SYMB := S_RSHIFT; goto L  }
-              SYMB := S_GR
+              IF ch='=' DO { symb := S_GE; goto L  }
+              IF ch='>' DO { symb := S_RSHIFT; goto L  }
+              symb := S_GR
               return
 
     case '-': rch()
-              IF ch='>' DO { SYMB := S_COND; goto L  }
-              SYMB := S_MINUS
+              IF ch='>' DO { symb := S_COND; goto L  }
+              symb := S_MINUS
               return
 
     case ':': rch()
-              IF ch='=' DO { SYMB := S_ASSIGN; goto L  }
-              SYMB := S_COLON
+              IF ch='=' DO { symb := S_ASSIGN; goto L  }
+              symb := S_COLON
               return
 
      case '\'': case '\"':
@@ -518,11 +506,11 @@ next:
               IF ch=QUOTE \/ CHARP=255 DO
                      { UNLESS ch=QUOTE DO caereport(95)
                         IF CHARP=1 & ch='\'' DO
-                                { SYMB := S_NUMBER
+                                { symb := S_NUMBER
                                    goto L  }
                         CHARV[0] := CHARP
-                        WORDSIZE := packstring(CHARV, WORDV)
-                        SYMB := S_STRING
+                        WORDSIZE := packstring(CHARV, wordv)
+                        symb := S_STRING
                         goto L   }
 
 
@@ -547,9 +535,9 @@ next:
 
 
     default:
-            if (ch == ENDSTREAMCH) {
+            if (ch == EOF) {
     case '.':   if (getp == 0) {
-                    SYMB := S_END;
+                    symb := S_END;
                     return;
                 }
                 fclose(sourcestream);
@@ -595,7 +583,7 @@ GET "SYNHDR"
 void d(s, ITEM)
 {
     unpackstring(s, CHARV)
-    WORDSIZE := packstring(CHARV, WORDV)
+    WORDSIZE := packstring(CHARV, wordv)
     lookupword()
     WORDNODE[0] := ITEM
 }
@@ -680,20 +668,20 @@ void declsyswords()
 
 AND lookupword() = VALOF
 
-{1     LET HASHVAL = (WORDV[0]+WORDV[WORDSIZE] >> 1) REM NAMETABLESIZE
+{1     LET HASHVAL = (wordv[0]+wordv[WORDSIZE] >> 1) REM NAMETABLESIZE
         LET m = @NAMETABLE[HASHVAL]
 
   next: WORDNODE := *m
         UNLESS WORDNODE=0 DO
              {2 FOR i = 0 TO WORDSIZE DO
-                   IF WORDNODE[i+2] NE WORDV[i] DO
+                   IF WORDNODE[i+2] NE wordv[i] DO
                    { m := WORDNODE+1
                       goto next  }
                  return WORDNODE[0]  }2
 
         WORDNODE := newvec(WORDSIZE+2)
         WORDNODE[0], WORDNODE[1] := S_NAME, NAMETABLE[HASHVAL]
-        FOR i = 0 TO WORDSIZE DO WORDNODE[i+2] := WORDV[i]
+        FOR i = 0 TO WORDSIZE DO WORDNODE[i+2] := wordv[i]
         NAMETABLE[HASHVAL] := WORDNODE
         return S_NAME
 }1
@@ -704,33 +692,6 @@ AND lookupword() = VALOF
 
 
 GET "SYNHDR"
-
-void rch()
-{
-    ch = getc(sourcestream);
-
-    if (prsource && getp == 0 && ch != ENDSTREAMCH) {
-        if (linecount != prline) {
-            printf("%4u  ", linecount);
-            prline = linecount;
-        }
-        putchar(ch);
-    }
-
-    chcount = chcount + 1;
-    chbuf[chcount & 63] = ch;
-}
-
-void wrchbuf()
-{
-    printf("\n...");
-    FOR p = chcount-63 TO chcount DO {
-        int k = chbuf[p & 63];
-        if (k != 0)
-            putchar(k);
-    }
-    newline();
-}
 
 AND rdtag(x) BE
     { CHARP, CHARV[1] := 1, x
@@ -744,13 +705,13 @@ AND rdtag(x) BE
             CHARV[CHARP] := ch  } REPEAT
 
        CHARV[0] := CHARP
-       WORDSIZE := packstring(CHARV, WORDV)
+       WORDSIZE := packstring(CHARV, wordv)
 }
 
 void performget()
 {
     nextsymb();
-    if (SYMB != S_STRING)
+    if (symb != S_STRING)
         caereport(97);
 
     if (option[5])
@@ -761,11 +722,11 @@ void performget()
     getv[getp+2] := ch;
     getp := getp + 3;
     linecount := 1;
-    sourcestream = fopen(WORDV, "r");
+    sourcestream = fopen(wordv, "r");
     if (sourcestream == 0)
-        sourcestream = findlibinput(WORDV);
+        sourcestream = findlibinput(wordv);
     if (sourcestream == 0)
-         caereport(96, WORDV);
+         caereport(96);
     rch();
 }
 
@@ -823,111 +784,56 @@ AND list4(x, y, z, t) = VALOF
         P[0], P[1], P[2], P[3] := x, y, z, t
         return P   }
 
-AND list5(x, y, z, t, U) = VALOF
+AND list5(x, y, z, t, u) = VALOF
      { LET P = newvec(4)
-        P[0], P[1], P[2], P[3], P[4] := x, y, z, t, U
+        P[0], P[1], P[2], P[3], P[4] := x, y, z, t, u
         return P   }
 
-AND list6(x, y, z, t, U, V) = VALOF
+AND list6(x, y, z, t, u, v) = VALOF
      { LET P = newvec(5)
-        P[0], P[1], P[2], P[3], P[4], P[5] := x, y, z, t, U, V
+        P[0], P[1], P[2], P[3], P[4], P[5] := x, y, z, t, u, v
         return P  }
-
-AND caereport(n, a) BE
-     { reportcount := reportcount + 1
-        printf("\nSYNTAX ERROR NEAR LINE %u:  ", linecount)
-        caemessage(n, a)
-        wrchbuf()
-        IF reportcount GR reportmax DO {
-            printf("\nCOMPILATION ABORTED\n");
-            exit(8);
-        }
-        nlpending := FALSE
-
-        UNTIL SYMB=S_LSECT \/ SYMB=S_RSECT \/
-              SYMB=S_LET \/ SYMB=S_AND \/
-              SYMB=S_END \/ nlpending DO nextsymb()
-        longjump(REC_P, REC_L)   }
 
 AND formtree() =  VALOF
     {1 chcount := 0
         FOR i = 0 TO 63 DO chbuf[i] := 0
 
-     { LET V = VEC 10   // FOR 'GET' STREAMS
-        getv, getp := V, 0
+     { LET v = VEC 10   // FOR 'GET' STREAMS
+        getv, getp := v, 0
 
-     { LET V = VEC 100
-        WORDV := V
+     { LET v = VEC 100
+        wordv := v
 
-     { LET V = VEC 256
-        CHARV, CHARP := V, 0
+     { LET v = VEC 256
+        CHARV, CHARP := v, 0
 
-     { LET V = VEC 100
-        NAMETABLE, NAMETABLESIZE := V, 100
+     { LET v = VEC 100
+        NAMETABLE, NAMETABLESIZE := v, 100
         FOR i = 0 TO 100 DO NAMETABLE[i] := 0
 
-        REC_P, REC_L := level(), L
+        rec_p, rec_l := level(), L
 
         linecount, prline := 1, 0
         rch()
 
-        IF ch=ENDSTREAMCH return 0
+        if (ch == EOF)
+            return 0;
         declsyswords()
 
      L: nextsymb()
 
         if (option[1]) {    // PP DEBUGGING OPTION
-            printf("%u %s\n", SYMB, WORDV);
-            if (SYMB == S_END)
+            printf("%u %s\n", symb, wordv);
+            if (symb == S_END)
                 return 0;
             goto L;
         }
 
      { LET a = rdblockbody()
-        UNLESS SYMB=S_END DO { caereport(99); goto L  }
+        UNLESS symb=S_END DO { caereport(99); goto L  }
 
         return a
 }1
-
-AND caemessage(n, a) BE
-    { LET s = VALOF
-
-         SWITCHON n INTO
-
-         { default:  printf("%u", n); return;
-
-            case 91: return "'8'  '(' OR ')' EXPECTED"
-            case 94: return "ILLEGAL CHARACTER"
-            case 95: return "STRING TOO LONG"
-            case 96: return "NO INPUT %S"
-            case 97: return "STRING OR NUMBER EXPECTED"
-            case 98: return "PROGRAM TOO LARGE"
-            case 99: return "INCORRECT TERMINATION"
-
-            case 8: case 40: case 43:
-                     return "NAME EXPECTED"
-            case 6: return "'{' EXPECTED"
-            case 7: return "'}' EXPECTED"
-            case 9: return "UNTAGGED '}' MISMATCH"
-            case 32: return "ERROR IN EXPRESSION"
-            case 33: return "ERROR IN NUMBER"
-            case 34: return "BAD STRING"
-            case 15: case 19: case 41: return "')' MISSING"
-            case 30: return "',' MISSING"
-            case 42: return "'=' OR 'BE' EXPECTED"
-            case 44: return "'=' OR '(' EXPECTED"
-            case 50: return "ERROR IN LABEL"
-            case 51: return "ERROR IN COMMAND"
-            case 54: return "'OR' EXPECTED"
-            case 57: return "'=' EXPECTED"
-            case 58: return "'TO' EXPECTED"
-            case 60: return "'INTO' EXPECTED"
-            case 61: case 62: return "':' EXPECTED"
-            case 63: return "'**/' MISSING"
-                       }
-
-         printf(s, a)  }
-
 
 .
 
@@ -937,18 +843,18 @@ AND caemessage(n, a) BE
 GET "SYNHDR"
 
 LET rdblockbody() = VALOF
-    {1 LET P, L = REC_P, REC_L
+    {1 LET P, L = rec_p, rec_l
         LET a = 0
 
-        REC_P, REC_L := level(), RECOVER
+        rec_p, rec_l := level(), RECOVER
 
         ignore(S_SEMICOLON)
 
-        SWITCHON SYMB INTO
+        SWITCHON symb INTO
      { case S_MANIFEST:
         case S_STATIC:
         case S_GLOBAL:
-            {  LET OP = SYMB
+            {  LET OP = symb
                 nextsymb()
                 a := rdsect(rdcdefs)
                 a := list3(OP, a, rdblockbody())
@@ -957,7 +863,7 @@ LET rdblockbody() = VALOF
 
         case S_LET: nextsymb()
                     a := rdef()
-           RECOVER: WHILE SYMB=S_AND DO
+           RECOVER: WHILE symb=S_AND DO
                           { nextsymb()
                              a := list3(S_AND, a, rdef())  }
                     a := list3(S_LET, a, rdblockbody())
@@ -965,53 +871,53 @@ LET rdblockbody() = VALOF
 
         default: a := rdseq()
 
-                 UNLESS SYMB=S_RSECT \/ SYMB=S_END DO
+                 UNLESS symb=S_RSECT \/ symb=S_END DO
                           caereport(51)
 
         case S_RSECT: case S_END:
-        RET:   REC_P, REC_L := P, L
+        RET:   rec_p, rec_l := P, L
                return a   }1
 
 AND rdseq() = VALOF
     { LET a = 0
        ignore(S_SEMICOLON)
        a := rcom()
-       IF SYMB=S_RSECT \/ SYMB=S_END return a
+       IF symb=S_RSECT \/ symb=S_END return a
        return list3(S_SEQ, a, rdseq())   }
 
 
 AND rdcdefs() = VALOF
     {1 LET a, b = 0, 0
         LET PTR = @a
-        LET P, L = REC_P, REC_L
-        REC_P, REC_L := level(), RECOVER
+        LET P, L = rec_p, rec_l
+        rec_p, rec_l := level(), RECOVER
 
         { b := rname()
-           TEST SYMB=S_EQ \/ SYMB=S_COLON THEN nextsymb()
+           TEST symb=S_EQ \/ symb=S_COLON THEN nextsymb()
                                             OR caereport(45)
            *PTR := list4(S_CONSTDEF, 0, b, rexp(0))
            PTR := @H2[*PTR]
-  RECOVER: ignore(S_SEMICOLON) } REPEATWHILE SYMB=S_NAME
+  RECOVER: ignore(S_SEMICOLON) } REPEATWHILE symb=S_NAME
 
-        REC_P, REC_L := P, L
+        rec_p, rec_l := P, L
         return a  }1
 
 AND rdsect(R) = VALOF
     {  LET TAG, a = WORDNODE, 0
         checkfor(S_LSECT, 6)
         a := R()
-        UNLESS SYMB=S_RSECT DO caereport(7)
+        UNLESS symb=S_RSECT DO caereport(7)
         TEST TAG=WORDNODE
              THEN nextsymb()
                OR IF WORDNODE=NULLTAG DO
-                      { SYMB := 0
+                      { symb := 0
                          caereport(9)  }
         return a   }
 
 
 AND rnamelist() = VALOF
     {  LET a = rname()
-        UNLESS SYMB=S_COMMA return a
+        UNLESS symb=S_COMMA return a
         nextsymb()
         return list3(S_COMMA, a, rnamelist())   }
 
@@ -1021,10 +927,10 @@ AND rname() = VALOF
        checkfor(S_NAME, 8)
        return a  }
 
-AND ignore(ITEM) BE IF SYMB=ITEM DO nextsymb()
+AND ignore(ITEM) BE IF symb=ITEM DO nextsymb()
 
 AND checkfor(ITEM, n) BE
-      { UNLESS SYMB=ITEM DO caereport(n)
+      { UNLESS symb=ITEM DO caereport(n)
          nextsymb()  }
 
 .
@@ -1034,9 +940,9 @@ AND checkfor(ITEM, n) BE
 GET "SYNHDR"
 
 LET rbexp() = VALOF
-  {1   LET a, OP = 0, SYMB
+  {1   LET a, OP = 0, symb
 
-        SWITCHON SYMB INTO
+        SWITCHON symb INTO
 
     {  default:
             caereport(32)
@@ -1054,7 +960,7 @@ LET rbexp() = VALOF
         case S_STRING:
             a := newvec(WORDSIZE+1)
             a[0] := S_STRING
-            FOR i = 0 TO WORDSIZE DO a[i+1] := WORDV[i]
+            FOR i = 0 TO WORDSIZE DO a[i+1] := wordv[i]
             nextsymb()
             return a
 
@@ -1098,7 +1004,7 @@ AND rexp(n) = VALOF
 
         LET b, C, P, Q = 0, 0, 0, 0
 
-  L: { LET OP = SYMB
+  L: { LET OP = symb
 
         IF nlpending return a
 
@@ -1107,7 +1013,7 @@ AND rexp(n) = VALOF
 
         case S_LPAREN: nextsymb()
                        b := 0
-                       UNLESS SYMB=S_RPAREN DO b := rexplist()
+                       UNLESS symb=S_RPAREN DO b := rexplist()
                        checkfor(S_RPAREN, 19)
                        a := list3(S_FNAP, a, b)
                        goto L
@@ -1128,7 +1034,7 @@ AND rexp(n) = VALOF
                 a := list3(OP, a, b)
                 TEST C=0 THEN C :=  a
                            OR C := list3(S_LOGAND, C, a)
-                a, OP := b, SYMB  }R REPEATWHILE S_EQ<=OP<=S_GE
+                a, OP := b, symb  }R REPEATWHILE S_EQ<=OP<=S_GE
 
                 a := C
                 goto L
@@ -1161,7 +1067,7 @@ LET rexplist() = VALOF
         LET PTR = @a
 
      { LET b = rexp(0)
-        UNLESS SYMB=S_COMMA DO { *PTR := b
+        UNLESS symb=S_COMMA DO { *PTR := b
                                   return a  }
         nextsymb()
         *PTR := list3(S_COMMA, b, 0)
@@ -1171,20 +1077,20 @@ LET rexplist() = VALOF
 LET rdef() = VALOF
     {1 LET n = rnamelist()
 
-        SWITCHON SYMB INTO
+        SWITCHON symb INTO
 
      { case S_LPAREN:
              { LET a = 0
                 nextsymb()
                 UNLESS H1[n]=S_NAME DO caereport(40)
-                IF SYMB=S_NAME DO a := rnamelist()
+                IF symb=S_NAME DO a := rnamelist()
                 checkfor(S_RPAREN, 41)
 
-                IF SYMB=S_BE DO
+                IF symb=S_BE DO
                      { nextsymb()
                         return list5(S_RTDEF, n, a, rcom(), 0)  }
 
-                IF SYMB=S_EQ DO
+                IF symb=S_EQ DO
                      { nextsymb()
                         return list5(S_FNDEF, n, a, rexp(0), 0)  }
 
@@ -1194,7 +1100,7 @@ LET rdef() = VALOF
 
         case S_EQ:
                 nextsymb()
-                IF SYMB=S_VEC DO
+                IF symb=S_VEC DO
                      { nextsymb()
                         UNLESS H1[n]=S_NAME DO caereport(43)
                         return list3(S_VECDEF, n, rexp(0))  }
@@ -1208,9 +1114,9 @@ LET rdef() = VALOF
 GET "SYNHDR"
 
 LET rbcom() = VALOF
-   {1 LET a, b, OP = 0, 0, SYMB
+   {1 LET a, b, OP = 0, 0, symb
 
-        SWITCHON SYMB INTO
+        SWITCHON symb INTO
      { default: return 0
 
         case S_NAME: case S_NUMBER: case S_STRING:
@@ -1218,12 +1124,12 @@ LET rbcom() = VALOF
         case S_LPAREN:
                 a := rexplist()
 
-                IF SYMB=S_ASSIGN THEN
-                    {  OP := SYMB
+                IF symb=S_ASSIGN THEN
+                    {  OP := symb
                         nextsymb()
                         return list3(OP, a, rexplist())  }
 
-                IF SYMB=S_COLON DO
+                IF symb=S_COLON DO
                      { UNLESS H1[a]=S_NAME DO caereport(50)
                         nextsymb()
                         return list4(S_COLON, a, rbcom(), 0)  }
@@ -1262,7 +1168,7 @@ LET rbcom() = VALOF
                 i := rexp(0)
                 checkfor(S_TO, 58)
                 J := rexp(0)
-                IF SYMB=S_BY DO { nextsymb()
+                IF symb=S_BY DO { nextsymb()
                                    k := rexp(0)  }
                 ignore(S_DO)
                 return list6(S_FOR, a, i, J, k, rcom())  }
@@ -1299,9 +1205,9 @@ AND rcom() = VALOF
 
         IF a=0 DO caereport(51)
 
-        WHILE SYMB=S_REPEAT \/ SYMB=S_REPEATWHILE \/
-                    SYMB=S_REPEATUNTIL DO
-                  { LET OP = SYMB
+        WHILE symb=S_REPEAT \/ symb=S_REPEATWHILE \/
+                    symb=S_REPEATUNTIL DO
+                  { LET OP = symb
                      nextsymb()
                      TEST OP=S_REPEAT
                          THEN a := list2(OP, a)
@@ -2599,4 +2505,93 @@ void compileae(x)
         outl(globdecl[i+1]);
     }
     endocode();
+}
+
+void rch()
+{
+    ch = getc(sourcestream);
+
+    if (prsource && getp == 0 && ch != EOF) {
+        if (linecount != prline) {
+            printf("%4u  ", linecount);
+            prline = linecount;
+        }
+        putchar(ch);
+    }
+    chcount = chcount + 1;
+    chbuf[chcount & 63] = ch;
+}
+
+void wrchbuf()
+{
+    int p;
+
+    printf("\n...");
+    for (p = chcount-63; p <= chcount; p++) {
+        int k = chbuf[p & 63];
+        if (k != 0)
+            putchar(k);
+    }
+    newline();
+}
+
+void caemessage(n)
+{
+    char *s;
+
+    switch (n) {
+    default: printf("%u", n); return;
+
+    case 91: s = "'8'  '(' OR ')' EXPECTED"; break;
+    case 94: s = "ILLEGAL CHARACTER"; break;
+    case 95: s = "STRING TOO LONG"; break;
+    case 96: s = "NO INPUT %s"; break;
+    case 97: s = "STRING OR NUMBER EXPECTED"; break;
+    case 98: s = "PROGRAM TOO LARGE"; break;
+    case 99: s = "INCORRECT TERMINATION"; break;
+
+    case 8: case 40: case 43:
+             s = "NAME EXPECTED"; break;
+    case 6:  s = "'{' EXPECTED"; break;
+    case 7:  s = "'}' EXPECTED"; break;
+    case 9:  s = "UNTAGGED '}' MISMATCH"; break;
+    case 32: s = "ERROR IN EXPRESSION"; break;
+    case 33: s = "ERROR IN NUMBER"; break;
+    case 34: s = "BAD STRING"; break;
+    case 15: case 19: case 41:
+             s = "')' MISSING"; break;
+    case 30: s = "',' MISSING"; break;
+    case 42: s = "'=' OR 'BE' EXPECTED"; break;
+    case 44: s = "'=' OR '(' EXPECTED"; break;
+    case 50: s = "ERROR IN LABEL"; break;
+    case 51: s = "ERROR IN COMMAND"; break;
+    case 54: s = "'OR' EXPECTED"; break;
+    case 57: s = "'=' EXPECTED"; break;
+    case 58: s = "'TO' EXPECTED"; break;
+    case 60: s = "'INTO' EXPECTED"; break;
+    case 61: case 62:
+             s = "':' EXPECTED"; break;
+    case 63: s = "'*/' MISSING"; break;
+    }
+    printf(s, wordv);
+}
+
+void caereport(n)
+{
+    reportcount = reportcount + 1;
+    printf("\nSYNTAX ERROR NEAR LINE %u:  ", linecount);
+    caemessage(n);
+    wrchbuf();
+    if (reportcount > reportmax) {
+        printf("\nCOMPILATION ABORTED\n");;
+        exit(8);
+    }
+    nlpending = FALSE;
+
+    while (symb != S_LSECT && symb != S_RSECT &&
+           symb != S_LET   && symb != S_AND &&
+           symb != S_END   && ! nlpending) {
+        nextsymb();
+    }
+    longjump(rec_p, rec_l);
 }
