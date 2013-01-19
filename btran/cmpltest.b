@@ -31,43 +31,48 @@ MANIFEST $(
 $)
 
 LET t(x, y) = VALOF
-   $( testno := testno + 1
-      testcount := testcount + 1
-      IF x=y & quiet RESULTIS y
-      writef("%I3 %I5 ", testno, y)
-      TEST x=y
-         THEN writes("OK*N")
-         ELSE $( writef("FAILED %X8(%N) %X8(%N)*N", x, x, y, y)
-                 failcount := failcount + 1  $)
-      RESULTIS y  $)
-
+$(
+    testno := testno + 1
+    testcount := testcount + 1
+    IF x=y & quiet RESULTIS y
+    writef("%I3 %I5 ", testno, y)
+    TEST x=y THEN
+        writes("OK*N")
+    ELSE $(
+        writef("FAILED %X8(%N) %X8(%N)*N", x, x, y, y)
+        failcount := failcount + 1
+    $)
+    RESULTIS y
+$)
 
 LET t1(a,b,c,D,E,f,g) = t(a+b+c+D+E+f, g)
 
 LET start(parm) BE
-$(1 LET v1 = VEC 200
+$(1
+    LET v1 = VEC 200
     AND v2 = VEC 200
     tester(0, 1, 2, v1, v2)
 $)1
 
-
 AND tester(x, y, z, v1, v2) BE
-$(1 writef("*NCGTESTER ENTERED *N*N")
+$(1
+    writef("*NCGTESTER ENTERED *N*N")
 
-//  First initialize certain variables
-
+    //
+    // First initialize certain variables
+    //
     f, g, h := 100, 101, 102
     testno, testcount, failcount := 0, 0, 0
     v, w := v1, v2
 
     FOR i = 0 TO 200 DO v!i, w!i := 1000+i, 10000+i
 
-
     quiet := FALSE
-//  quiet := GETBYTE(parm,0)>0 & GETBYTE(parm,1)='Q' -> TRUE, FALSE
+    //quiet := GETBYTE(parm,0)>0 & GETBYTE(parm,1)='Q' -> TRUE, FALSE
 
-//  Test simple variables and expressions
-
+    //
+    // Test simple variables and expressions
+    //
     t(a+b+c, 33)
     t(f+g+h, 303)
     t(x+y+z, 3)
@@ -151,22 +156,32 @@ $(1 writef("*NCGTESTER ENTERED *N*N")
     t(x, 16)
     x := 15
 
-    $( LET w = VEC 20
-       GOTO L1
+    $(
+        LET w = VEC 20
+        GOTO L1
     L2: writes("GOTO ERROR*N")
-        failcount := failcount+1  $)
+        failcount := failcount+1
+    $)
 
 L1: a := VALOF RESULTIS 11
     t(a, 11)
 
-    testno := 100  // Test simulated stack routines
+    //
+    // Test simulated stack routines
+    //
+    testno := 100
 
-    $( LET v1 = VEC 1
-       v1!0, v1!1 := -1, -2
-       $( LET v2 = VEC 10
-          FOR i = 0 TO 10 DO v2!i := -i
-          t(v2!5, -5)  $)
-       t(v1!1, -2)  $)
+    $(
+        LET v1 = VEC 1
+        v1!0, v1!1 := -1, -2
+        $(
+            LET v2 = VEC 10
+            FOR i = 0 TO 10 DO
+                v2!i := -i
+            t(v2!5, -5)
+        $)
+        t(v1!1, -2)
+    $)
 
     x := x + t(x,15, t(f, 105), t(a, 11)) - 15
     t(x, 15)
@@ -185,14 +200,18 @@ L1: a := VALOF RESULTIS 11
     t(x, 120)
     x := 1
 
-    testno := 200  // Test switchon commands
+    //
+    // Test switchon commands
+    //
+    testno := 200
 
-$(SW LET s1, s1f = 0, 0
-     AND s2, s2f = 0, 0
+    $(SW
+        LET s1, s1f = 0, 0
+        AND s2, s2f = 0, 0
 
-     FOR i = -200 TO 200 DO
-     $( SWITCHON i INTO
-         $( DEFAULT: s1 := s1+1000; ENDCASE
+        FOR i = -200 TO 200 DO $(
+            SWITCHON i INTO $(
+            DEFAULT: s1 := s1+1000; ENDCASE
             CASE -1000: s1f := s1f + i; ENDCASE
             CASE -200: s1 := s1 + 1
             CASE -190: s1 := s1 + 1
@@ -225,10 +244,11 @@ $(SW LET s1, s1f = 0, 0
             CASE   82: s1 := s1 + 1
             CASE   61: s1 := s1 + 1
             CASE -171: s1 := s1 + 1
-            CASE -162: s1 := s1 + 1  $)
+            CASE -162: s1 := s1 + 1
+            $)
 
-        SWITCHON i+10000 INTO
-         $( DEFAULT: s2 := s2+1000; ENDCASE
+            SWITCHON i+10000 INTO $(
+            DEFAULT: s2 := s2+1000; ENDCASE
             CASE 10020: s2 := s2 + 1
             CASE 10021: s2 := s2 + 1
             CASE 10022: s2 := s2 + 1
@@ -244,55 +264,63 @@ $(SW LET s1, s1f = 0, 0
             CASE 10012: s2 := s2 + 1
             CASE 10013: s2 := s2 + 1
             CASE 10014: s2 := s2 + 1
-            CASE 10015: s2 := s2 + 1  $)
+            CASE 10015: s2 := s2 + 1
+            $)
+        $)
+        t(s1f, 0)
+        t(s2f, 0)
+        t(s1, (401-32)*1000 + 32*(32+1)/2)
+        t(s2, (401-16)*1000 + 16*(16+1)/2)
+    $)SW
 
-     $)
-     t(s1f, 0)
-     t(s2f, 0)
-     t(s1, (401-32)*1000 + 32*(32+1)/2)
-     t(s2, (401-16)*1000 + 16*(16+1)/2)
-$)SW
+    //
+    // Test function calling
+    //
+    testno := 250
 
+    t1(1,2,3,4,5,6, 21)
+    t1(t(1,1), t(2,2), t(3,3), t(4,4), t(5,5), t(6,6),
+       t(21,21))
+    t1(VALOF RESULTIS 1,
+       VALOF RESULTIS 2,
+       VALOF RESULTIS 3,
+       VALOF RESULTIS 4,
+       VALOF RESULTIS 5,
+       VALOF RESULTIS 6,
+       21)
+    t1(VALOF RESULTIS 1,
+       t(2,2),
+       VALOF RESULTIS 3,
+       t(4,4),
+       VALOF RESULTIS 5,
+       t(6,6),
+       21)
+    t1( 1, t(2,2), VALOF RESULTIS 3,
+        4, t(5,5), VALOF RESULTIS 6,
+        21)
+    t1(!v,v!0,v!200,!w,w!0,w!200, 2*1000+1200+2*10000+10200)
+    (t1+(x+x)/x-2)(1,1,1,1,1,1,6)
+    (!@t1)(1,2,3,4,5,6,21)
 
-    testno := 250  // TEST FUNCTION CALLING
+    //
+    // Test expression operators
+    //
+    testno := 300
 
-      t1(1,2,3,4,5,6, 21)
-      t1(t(1,1), t(2,2), t(3,3), t(4,4), t(5,5), t(6,6),
-         t(21,21))
-      t1(VALOF RESULTIS 1,
-         VALOF RESULTIS 2,
-         VALOF RESULTIS 3,
-         VALOF RESULTIS 4,
-         VALOF RESULTIS 5,
-         VALOF RESULTIS 6,
-         21)
-      t1(VALOF RESULTIS 1,
-         t(2,2),
-         VALOF RESULTIS 3,
-         t(4,4),
-         VALOF RESULTIS 5,
-         t(6,6),
-         21)
-     t1( 1, t(2,2), VALOF RESULTIS 3,
-         4, t(5,5), VALOF RESULTIS 6,
-         21)
-     t1(!v,v!0,v!200,!w,w!0,w!200, 2*1000+1200+2*10000+10200)
-     (t1+(x+x)/x-2)(1,1,1,1,1,1,6)
-     (!@t1)(1,2,3,4,5,6,21)
+    t((2+3)+f+6,116)
+    t(f+2+3+6,116)
+    t(6+3+2+f, 116)
+    t(f-104, 1)
+    t((x+2)=(x+2)->99,98, 99)
+    t(f<f+1->21,22, 21)
+    t(f>f+1->31,32, 32)
+    t(f<=105->41,42, 41)
+    t(f>=105->51,52, 51)
 
-     testno := 300  // TEST EXPRESSION OPERATORS
-
-     t((2+3)+f+6,116)
-     t(f+2+3+6,116)
-     t(6+3+2+f, 116)
-     t(f-104, 1)
-     t((x+2)=(x+2)->99,98, 99)
-     t(f<f+1->21,22, 21)
-     t(f>f+1->31,32, 32)
-     t(f<=105->41,42, 41)
-     t(f>=105->51,52, 51)
-
-    testno := 400  // TEST REGISTER ALLOCATION ETC.
+    //
+    // Test register allocation etc.
+    //
+    testno := 400
 
     x := 0
     y := 1
