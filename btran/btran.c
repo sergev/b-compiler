@@ -415,7 +415,7 @@ void transreport(n, x)
 void writeop(x)
 {
     char *s;
-    int i, n;
+    int i;
 
     switch (x) {
     default: transreport(199, currentbranch); s = "ERROR"; break;
@@ -487,9 +487,12 @@ void writeop(x)
     case S_ITEMN:    s = "ITEMN";    break;
     }
 
-    n = getbyte(s, 0);
-    for (i = 1; i <= n; i++)
-        wrc(getbyte(s, i));
+    for (i = 0; ; i++) {
+        int c = getbyte(s, i);
+        if (c == 0)
+            break;
+        wrc(c);
+    }
 }
 
 void wrpn(n)
@@ -578,9 +581,9 @@ void compentry(n, l)
     int *s = &n[2];
     int i, len;
 
-    len = getbyte(s, 0);
+    len = strlen((char*) s);
     out3p(S_ENTRY, len, l);
-    for (i = 1; i <= len; i++)
+    for (i = 0; i < len; i++)
         outc(getbyte(s, i));
     wrc(' ');
 }
@@ -1373,8 +1376,9 @@ void load(x)
 
     case S_STRING: {
         int *s = &H2[x];
-        out2(S_LSTR, getbyte(s, 0));
-        for (i = 1; i <= getbyte(s, 0); i++)
+        int len = strlen((char*) s);
+        out2(S_LSTR, len);
+        for (i = 0; i < len; i++)
             outc(getbyte(s, i));
         wrc(' ');
         ssp = ssp + 1;
