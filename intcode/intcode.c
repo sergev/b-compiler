@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include "blib.h"
 
-#define VSIZE       32000
+#define VSIZE       64000
 #define MGLOB       1
 #define MPROG       402
 
