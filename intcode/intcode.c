@@ -289,7 +289,7 @@ main(argc, argv)
     int pgvec[VSIZE];
 
     if (argc != 2) {
-        fprintf(stderr, "usage: icint file\n");
+        fprintf(stderr, "usage: intcode file\n");
         return 1;
     }
     fp = fopen(argv[1], "r");

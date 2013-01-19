@@ -1,5 +1,6 @@
 /*
  * BCPL compiler rewritten to C.
+ * Based on work of Robert Nordier, www.nordier.com.
  *
  * Copyright (C) 2013 Serge Vakulenko
  *

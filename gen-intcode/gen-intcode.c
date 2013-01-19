@@ -1,3 +1,12 @@
+/*
+ * OCODE to INTCODE generator rewritten to C.
+ * Based on BCPL sources from Robert Nordier, www.nordier.com.
+ *
+ * Copyright (C) 2013 Serge Vakulenko
+ *
+ * It is free software; you can redistribute it and/or modify it
+ * under the terms of the "Artistic License".
+ */
 #include <stdio.h>
 #include <string.h>
 
