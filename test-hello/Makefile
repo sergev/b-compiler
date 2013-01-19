@@ -4,14 +4,14 @@ all:    hello
 hello:  ../btran/btran ../gen-intcode/gen-intcode hello.b iclib.intcode
 	../btran/btran < hello.b
 	../gen-intcode/gen-intcode < OCODE
-	echo '#!/usr/local/bin/intcode' > $@
+	echo '#!/usr/bin/env intcode' > $@
 	cat iclib.intcode INTCODE >> $@
 	chmod +x $@
 
-bhello:  bcpl-tran ../gen-intcode/gen-intcode hello.bcpl iclib.intcode
+bhello: bcpl-tran ../gen-intcode/gen-intcode hello.bcpl iclib.intcode
 	./bcpl-tran < hello.bcpl
 	../gen-intcode/gen-intcode < OCODE
-	echo '#!/usr/local/bin/intcode' > $@
+	echo '#!/usr/bin/env intcode' > $@
 	cat iclib.intcode INTCODE >> $@
 	chmod +x $@
 
