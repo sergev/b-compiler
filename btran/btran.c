@@ -1,11 +1,57 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <setjmp.h>
 
 /*
  * Functions from standard B library.
  */
-#define getbyte(s, i)   ((unsigned char*)s) [i]
+#define getbyte(s, i)   *(i + (unsigned char*)s)
 #define newline()       putchar('\n')
+#define longjump(s,l)   longjmp((void*) s, (int) l)
+#define setjump(s,l)    if (setjmp((void*) s)) goto l;
+#define JUMPSZ          14
+
+static inline void putbyte(s, i, c)
+    int *s;
+{
+    *(i + (char*)s) = c;
+}
+
+int packstring(src, dest)
+    int *src, *dest;
+{
+    int i, c;
+
+    for (i=0; (c = src[i]); i++) {
+        putbyte(dest, i, c);
+    }
+    do {
+        putbyte(dest, i++, 0);
+    } while (i & 3);
+    return i >> 2;
+}
+
+void unpackstring(src, dest)
+    int *src, *dest;
+{
+    int i, c;
+
+    for (i = 0; ; i++) {
+        c = getbyte(src, i);
+        dest[i] = c;
+        if (c == 0)
+            break;
+    }
+}
+
+void aptovec(func, n)
+    void (*func)();
+{
+    int vec [n];
+
+    func(vec, n);
+}
 
 /* Forward declarations. */
 void load(int *x);
@@ -13,10 +59,16 @@ void loadlv(int *x);
 void loadlist(int *x);
 void assign(int *x, int *y);
 void trans(int *x);
+void nextsymb();
+int *rexp(int n);
+int *rcom(void);
+int *rdblockbody(void);
 
 /* Boolean values */
 #define FALSE   0
 #define TRUE    -1
+
+#define INCDIR  "/usr/local/lib/bcpl/"
 
 /*
  * AE operators and symbols
@@ -158,57 +210,35 @@ void trans(int *x);
  * Globals used in lex
  */
 int *chbuf;
-//int decval;
+int decval;
 int *getv;
 int getp;
 int *wordv;
-//int wordsize;
-//int charv;
-//int charp;
+int wordsize;
+int *charv;
+int charp;
 int prsource;
 int prline;
 int symb;
-//int wordnode;
+int *wordnode;
+int *nulltag;
 int ch;
-//int rdtag;
-//int declsyswords;
 int nlpending;
-//int lookupword;
-//int rch;
-//int pptrace;
+int pptrace;
 int *option;
 int chcount;
 int linecount;
-//int nulltag;
-int rec_p;
-int rec_l;
+int *rec_p;
+int *rec_l;
+int terminator;
 
 /*
  * Globals used in CAE
  */
-//int rdblockbody;
-//int rdsect;
-//int rnamelist;
-//int rname;
-//int rexp;
-//int rdef;
-//int rdcdefs;
-//int nametable;
-//int nametablesize;
-//int checkfor;
-//int ignore;
-//int performget;
-//int rexplist;
-//int rdseq;
-//int list1;
-//int list2;
-//int list3;
-//int list4;
-//int list5;
-//int newvec;
-//int treep;
-//int treevec;
-//int list6;
+int *nametable;
+int nametablesize;
+int *treep;
+int *treevec;
 int reportcount;
 int reportmax;
 FILE *sourcestream;
@@ -259,964 +289,6 @@ int cellwithname(n)
     } while (x != 0 && (int*) dvec[x] != n);
     return x;
 }
-
-#if 0
-GET "LIBHDR"
-
-comp(v, treemax)
-{
-    int b [63];
-    int a;
-
-    chbuf := b;
-    for (;;) {
-        treep, treevec := v+treemax, v
-
-        a = formtree()
-        IF a=0 break
-
-        printf("\nTREE SIZE %u\n", treemax+treevec-treep)
-
-        if (option[2]) {
-            printf("AE TREE\n");
-            plist(a, 0, 20)
-            newline()
-        }
-
-        UNLESS reportcount=0 DO
-            exit(8)
-
-        if (! option[3]) {
-            compileae(a);
-        }
-    }
-}
-
-int main()
-{
-    int opt[20];
-    int treesize = 5500;
-
-    printf("\nBCPL %u\n", @start)
-
-    option = opt;
-    savespacesize = 2;
-    pptrace = FALSE;
-    prsource = FALSE;
-    FOR i = 0 TO 20 DO
-        opt[i] := FALSE;
-
-    sourcestream = fopen("OPTIONS", "r");
-    if (sourcestream != 0) {
-        LET ch = 0
-        AND n = 0
-        printf("OPTIONS  ")
-
-        for (;;) {
-            ch := getc(sourcestream);
-L:          if (ch =='\n' || ch == EOF)
-                break;
-            putchar(ch)
-            IF ch='P' DO n := 1
-            IF ch='T' DO n := 2
-            IF ch='C' DO n := 3
-            IF ch='M' DO n := 4
-            IF ch='N' DO n := 5
-            IF ch='S' DO prsource := TRUE
-            IF ch='E' DO pptrace := TRUE
-            IF ch='L' DO {
-                treesize := readn()
-                printf("%u", treesize);
-                ch := terminator
-                goto L
-            }
-            if (ch == '3')
-                savespacesize = 3;
-            option[n] = TRUE;
-        }
-
-        newline();
-        fclose(sourcestream);
-    }
-
-    reportmax = 20;
-    reportcount = 0;
-
-    sourcestream = stdin;
-
-    ocode = fopen("OCODE", "w");
-    if (ocode == 0) {
-        perror("OCODE");
-        exit(8);
-    }
-
-    aptovec(comp, treesize);
-
-    //if (option[4]) mapstore();
-
-    printf("\nPHASE 1 COMPLETE\n");
-    if (reportcount != 0) {
-        exit(8);
-    }
-    return 0;
-}
-
-//    LEX1
-
-GET "SYNHDR"
-
-void nextsymb()
-{1
-    nlpending := FALSE
-next:
-    if (pptrace) {
-        putchar(ch);
-    }
-
-    switch (ch) {
-    case '\n':
-        linecount := linecount + 1;
-        nlpending := TRUE;          // ignorable characters
-    case '\v':
-    case '\t':
-    case ' ':
-        do {
-            rch();
-        } while (ch == ' ');
-        goto next;
-
-    case '0': case '1': case '2': case '3': case '4':
-    case '5': case '6': case '7': case '8': case '9':
-         symb := S_NUMBER
-         readnumber(10)
-         return
-
-    case 'A': case 'B': case 'C': case 'D': case 'E':
-    case 'F': case 'G': case 'H': case 'I': case 'J':
-    case 'K': case 'L': case 'M': case 'N': case 'O':
-    case 'P': case 'Q': case 'R': case 'S': case 'T':
-    case 'U': case 'V': case 'W': case 'X': case 'Y':
-    case 'Z':
-    case 'a': case 'b': case 'c': case 'd': case 'e':
-    case 'f': case 'g': case 'h': case 'i': case 'j':
-    case 'k': case 'l': case 'm': case 'n': case 'o':
-    case 'p': case 'q': case 'r': case 's': case 't':
-    case 'u': case 'v': case 'w': case 'x': case 'y':
-    case 'z':
-           rdtag(ch)
-           symb := lookupword()
-           IF symb=S_GET DO { performget(); goto next  }
-           return
-
-    case '$': rch()
-              UNLESS ch='(' \/ ch=')' DO caereport(91)
-              symb := ch='(' -> S_LSECT, S_RSECT
-              rdtag('$')
-              lookupword()
-              return
-
-    case '[':
-    case '(': symb := S_LPAREN; goto L
-    case ']':
-    case ')': symb := S_RPAREN; goto L
-
-    case '#': symb := S_NUMBER
-              rch()
-              IF '0'<=ch<='7' DO { readnumber(8); return  }
-              IF ch='B' DO { rch(); readnumber(2); return  }
-              IF ch='O' DO { rch(); readnumber(8); return  }
-              IF ch='X' DO { rch(); readnumber(16); return  }
-              caereport(33)
-
-    case '?': symb := S_QUERY; goto L
-    case '+': symb := S_PLUS; goto L
-    case ',': symb := S_COMMA; goto L
-    case ';': symb := S_SEMICOLON; goto L
-    case '@': symb := S_LV; goto L
-    case '&': symb := S_LOGAND; goto L
-    case '=': symb := S_EQ; goto L
-    case '!': symb := S_VECAP; goto L
-    case '_': symb := S_ASSIGN; goto L
-    case '*': symb := S_MULT; goto L
-
-    case '/': rch()
-              IF ch='\\' DO { symb := S_LOGAND; goto L }
-              IF ch='/' goto COMMENT
-              UNLESS ch='*' DO { symb := S_DIV; return  }
-
-              rch()
-
-              if (ch != EOF) {
-                    TEST ch='*'
-
-                    THEN { rch()
-                            UNLESS ch='/' LOOP
-                            rch()
-                            goto next  }
-
-                    OR { IF ch='\n' DO linecount := linecount+1
-                          rch()  }
-              }
-              caereport(63)
-
-
-    COMMENT: do {
-                rch();
-             } while (ch != '\n' && ch != EOF);
-             goto next
-
-    case '|': rch()
-              IF ch='|' goto COMMENT
-              symb := S_LOGOR
-              return
-
-    case '\\': rch()
-              IF ch='/' DO { symb := S_LOGOR; goto L  }
-              IF ch='=' DO { symb := S_NE; goto L  }
-              symb := S_NOT
-              return
-
-    case '<': rch()
-              IF ch='=' DO { symb := S_LE; goto L  }
-              IF ch='<' DO { symb := S_LSHIFT; goto L }
-              symb := S_LS
-              return
-
-    case '>': rch()
-              IF ch='=' DO { symb := S_GE; goto L  }
-              IF ch='>' DO { symb := S_RSHIFT; goto L  }
-              symb := S_GR
-              return
-
-    case '-': rch()
-              IF ch='>' DO { symb := S_COND; goto L  }
-              symb := S_MINUS
-              return
-
-    case ':': rch()
-              IF ch='=' DO { symb := S_ASSIGN; goto L  }
-              symb := S_COLON
-              return
-
-     case '\'': case '\"':
-          {1 LET QUOTE = ch
-              CHARP := 0
-
-           { rch()
-              IF ch=QUOTE \/ CHARP=255 DO
-                     { UNLESS ch=QUOTE DO caereport(95)
-                        IF CHARP=1 & ch='\'' DO
-                                { symb := S_NUMBER
-                                   goto L  }
-                        CHARV[0] := CHARP
-                        WORDSIZE := packstring(CHARV, wordv)
-                        symb := S_STRING
-                        goto L   }
-
-
-              IF ch='\n' DO linecount := linecount + 1
-
-              IF ch='*' DO
-                     { rch()
-                        IF ch='\n' DO
-                            { linecount := linecount+1
-                               rch() REPEATWHILE ch=' ' \/ ch='\t'
-                               UNLESS ch='*' DO caereport(34)
-                               LOOP  }
-                        IF ch='T' DO ch := '\t'
-                        IF ch='S' DO ch := ' '
-                        IF ch='N' DO ch := '\n'
-                        IF ch='B' DO ch := '\b'
-                        IF ch='P' DO ch := '\f'  }
-
-              DECVAL, CHARP := ch, CHARP+1
-              CHARV[CHARP] := ch  } REPEAT  }1
-
-
-
-    default:
-            if (ch == EOF) {
-    case '.':   if (getp == 0) {
-                    symb := S_END;
-                    return;
-                }
-                fclose(sourcestream);
-                getp := getp - 3
-                sourcestream := getv[getp]
-                linecount := getv[getp+1]
-                ch := getv[getp+2]
-                goto next
-            }
-
-            ch := ' '
-            caereport(94)
-            rch()
-            goto next
-
-L:      rch()
-    }
-}1
-
-AND readnumber(RADIX) BE
-    { LET d = value(ch)
-       DECVAL := d
-       IF d>=RADIX DO caereport(33)
-
-       { rch()
-          d := value(ch)
-          IF d>=RADIX return
-          DECVAL := RADIX*DECVAL + d  } REPEAT
-    }
-
-
-int value(ch)
-{
-    return ('0' <= ch && ch <= '9') ? (ch - '0') :
-           ('A' <= ch && ch <= 'F') ? (ch - 'A' + 10) :
-           ('a' <= ch && ch <= 'f') ? (ch - 'a' + 10) : 100;
-}
-
-//    LEX2
-
-GET "SYNHDR"
-
-void d(s, ITEM)
-{
-    unpackstring(s, CHARV)
-    WORDSIZE := packstring(CHARV, wordv)
-    lookupword()
-    WORDNODE[0] := ITEM
-}
-
-void declsyswords()
-{
-    d("AND", S_AND)
-
-    d("BE", S_BE)
-    d("BREAK", S_BREAK)
-    d("BY", S_BY)
-
-    d("CASE", S_CASE)
-
-    d("DO", S_DO)
-    d("DEFAULT", S_DEFAULT)
-
-    d("EQ", S_EQ)
-    d("EQV", S_EQV)
-    d("ELSE", S_OR)
-    d("ENDCASE", S_ENDCASE)
-
-    d("FALSE", S_FALSE)
-    d("FOR", S_FOR)
-    d("FINISH", S_FINISH)
-
-    d("GOTO", S_GOTO)
-    d("GE", S_GE)
-    d("GR", S_GR)
-    d("GLOBAL", S_GLOBAL)
-    d("GET", S_GET)
-
-    d("IF", S_IF)
-    d("INTO", S_INTO)
-
-    d("LET", S_LET)
-    d("LV", S_LV)
-    d("LE", S_LE)
-    d("LS", S_LS)
-    d("LOGOR", S_LOGOR)
-    d("LOGAND", S_LOGAND)
-    d("LOOP", S_LOOP)
-    d("LSHIFT", S_LSHIFT)
-
-    d("MANIFEST", S_MANIFEST)
-
-    d("NE", S_NE)
-    d("NOT", S_NOT)
-    d("NEQV", S_NEQV)
-
-    d("OR", S_OR)
-
-    d("RESULTIS", S_RESULTIS)
-    d("RETURN", S_RETURN)
-    d("REM", S_REM)
-    d("RSHIFT", S_RSHIFT)
-    d("RV", S_RV)
-    d("REPEAT", S_REPEAT)
-    d("REPEATWHILE", S_REPEATWHILE)
-    d("REPEATUNTIL", S_REPEATUNTIL)
-
-    d("SWITCHON", S_SWITCHON)
-    d("STATIC", S_STATIC)
-
-    d("TO", S_TO)
-    d("TEST", S_TEST)
-    d("TRUE", S_TRUE)
-    d("THEN", S_DO)
-    d("TABLE", S_TABLE)
-
-    d("UNTIL", S_UNTIL)
-    d("UNLESS", S_UNLESS)
-
-    d("VEC", S_VEC)
-    d("VALOF", S_VALOF)
-
-    d("WHILE", S_WHILE)
-
-    d("$", 0);
-    NULLTAG := WORDNODE;
-}
-
-AND lookupword() = VALOF
-
-{1     LET HASHVAL = (wordv[0]+wordv[WORDSIZE] >> 1) REM NAMETABLESIZE
-        LET m = @NAMETABLE[HASHVAL]
-
-  next: WORDNODE := *m
-        UNLESS WORDNODE=0 DO
-             {2 FOR i = 0 TO WORDSIZE DO
-                   IF WORDNODE[i+2] NE wordv[i] DO
-                   { m := WORDNODE+1
-                      goto next  }
-                 return WORDNODE[0]  }2
-
-        WORDNODE := newvec(WORDSIZE+2)
-        WORDNODE[0], WORDNODE[1] := S_NAME, NAMETABLE[HASHVAL]
-        FOR i = 0 TO WORDSIZE DO WORDNODE[i+2] := wordv[i]
-        NAMETABLE[HASHVAL] := WORDNODE
-        return S_NAME
-}1
-
-.
-
-//    LEX3
-
-
-GET "SYNHDR"
-
-AND rdtag(x) BE
-    { CHARP, CHARV[1] := 1, x
-
-        {  rch()
-            UNLESS 'A'<=ch<='Z' \/
-                   'a'<=ch<='z' \/
-                   '0'<=ch<='9' \/
-                    ch='.' break
-            CHARP := CHARP+1
-            CHARV[CHARP] := ch  } REPEAT
-
-       CHARV[0] := CHARP
-       WORDSIZE := packstring(CHARV, wordv)
-}
-
-void performget()
-{
-    nextsymb();
-    if (symb != S_STRING)
-        caereport(97);
-
-    if (option[5])
-        return;
-
-    getv[getp] := sourcestream;
-    getv[getp+1] := linecount;
-    getv[getp+2] := ch;
-    getp := getp + 3;
-    linecount := 1;
-    sourcestream = fopen(wordv, "r");
-    if (sourcestream == 0)
-        sourcestream = findlibinput(wordv);
-    if (sourcestream == 0)
-         caereport(96);
-    rch();
-}
-
-AND append(d, s) BE
-    { LET ND = getbyte(d, 0)
-       AND NS = getbyte(s, 0)
-       FOR i = 1 TO NS DO {
-           ND := ND + 1
-           putbyte(d, ND, getbyte(s, i)) }
-       putbyte(d, 0, ND) }
-
-AND findlibinput(NAME) = VALOF
-    { LET PATH = VEC 64
-       AND DIR = "/usr/lib/bcpl/"
-       TEST getbyte(DIR, 0) + getbyte(NAME, 0) > 255
-       THEN return 0
-         OR { putbyte(PATH, 0, 0)
-               append(PATH, DIR)
-               append(PATH, NAME)
-               return findinput(PATH) }
-    }
-
-
-.
-
-//    CAE0
-
-
-GET "SYNHDR"
-
-LET newvec(n) = VALOF
-    { treep := treep - n - 1
-       IF treep<=treevec DO
-                { reportmax := 0
-                   caereport(98)  }
-        return treep  }
-
-AND list1(x) = VALOF
-    { LET P = newvec(0)
-       P[0] := x
-       return P  }
-
-AND list2(x, y) = VALOF
-     { LET P = newvec(1)
-        P[0], P[1] := x, y
-        return P   }
-
-AND list3(x, y, z) = VALOF
-     { LET P = newvec(2)
-        P[0], P[1], P[2] := x, y, z
-        return P     }
-
-AND list4(x, y, z, t) = VALOF
-     { LET P = newvec(3)
-        P[0], P[1], P[2], P[3] := x, y, z, t
-        return P   }
-
-AND list5(x, y, z, t, u) = VALOF
-     { LET P = newvec(4)
-        P[0], P[1], P[2], P[3], P[4] := x, y, z, t, u
-        return P   }
-
-AND list6(x, y, z, t, u, v) = VALOF
-     { LET P = newvec(5)
-        P[0], P[1], P[2], P[3], P[4], P[5] := x, y, z, t, u, v
-        return P  }
-
-AND formtree() =  VALOF
-    {1 chcount := 0
-        FOR i = 0 TO 63 DO chbuf[i] := 0
-
-     { LET v = VEC 10   // FOR 'GET' STREAMS
-        getv, getp := v, 0
-
-     { LET v = VEC 100
-        wordv := v
-
-     { LET v = VEC 256
-        CHARV, CHARP := v, 0
-
-     { LET v = VEC 100
-        NAMETABLE, NAMETABLESIZE := v, 100
-        FOR i = 0 TO 100 DO NAMETABLE[i] := 0
-
-        rec_p, rec_l := level(), L
-
-        linecount, prline := 1, 0
-        rch()
-
-        if (ch == EOF)
-            return 0;
-        declsyswords()
-
-     L: nextsymb()
-
-        if (option[1]) {    // PP DEBUGGING OPTION
-            printf("%u %s\n", symb, wordv);
-            if (symb == S_END)
-                return 0;
-            goto L;
-        }
-
-     { LET a = rdblockbody()
-        UNLESS symb=S_END DO { caereport(99); goto L  }
-
-        return a
-}1
-
-.
-
-//    CAE1
-
-
-GET "SYNHDR"
-
-LET rdblockbody() = VALOF
-    {1 LET P, L = rec_p, rec_l
-        LET a = 0
-
-        rec_p, rec_l := level(), RECOVER
-
-        ignore(S_SEMICOLON)
-
-        SWITCHON symb INTO
-     { case S_MANIFEST:
-        case S_STATIC:
-        case S_GLOBAL:
-            {  LET OP = symb
-                nextsymb()
-                a := rdsect(rdcdefs)
-                a := list3(OP, a, rdblockbody())
-                goto RET  }
-
-
-        case S_LET: nextsymb()
-                    a := rdef()
-           RECOVER: WHILE symb=S_AND DO
-                          { nextsymb()
-                             a := list3(S_AND, a, rdef())  }
-                    a := list3(S_LET, a, rdblockbody())
-                    goto RET
-
-        default: a := rdseq()
-
-                 UNLESS symb=S_RSECT \/ symb=S_END DO
-                          caereport(51)
-
-        case S_RSECT: case S_END:
-        RET:   rec_p, rec_l := P, L
-               return a   }1
-
-AND rdseq() = VALOF
-    { LET a = 0
-       ignore(S_SEMICOLON)
-       a := rcom()
-       IF symb=S_RSECT \/ symb=S_END return a
-       return list3(S_SEQ, a, rdseq())   }
-
-
-AND rdcdefs() = VALOF
-    {1 LET a, b = 0, 0
-        LET PTR = @a
-        LET P, L = rec_p, rec_l
-        rec_p, rec_l := level(), RECOVER
-
-        { b := rname()
-           TEST symb=S_EQ \/ symb=S_COLON THEN nextsymb()
-                                            OR caereport(45)
-           *PTR := list4(S_CONSTDEF, 0, b, rexp(0))
-           PTR := @H2[*PTR]
-  RECOVER: ignore(S_SEMICOLON) } REPEATWHILE symb=S_NAME
-
-        rec_p, rec_l := P, L
-        return a  }1
-
-AND rdsect(R) = VALOF
-    {  LET TAG, a = WORDNODE, 0
-        checkfor(S_LSECT, 6)
-        a := R()
-        UNLESS symb=S_RSECT DO caereport(7)
-        TEST TAG=WORDNODE
-             THEN nextsymb()
-               OR IF WORDNODE=NULLTAG DO
-                      { symb := 0
-                         caereport(9)  }
-        return a   }
-
-
-AND rnamelist() = VALOF
-    {  LET a = rname()
-        UNLESS symb=S_COMMA return a
-        nextsymb()
-        return list3(S_COMMA, a, rnamelist())   }
-
-
-AND rname() = VALOF
-    { LET a = WORDNODE
-       checkfor(S_NAME, 8)
-       return a  }
-
-AND ignore(ITEM) BE IF symb=ITEM DO nextsymb()
-
-AND checkfor(ITEM, n) BE
-      { UNLESS symb=ITEM DO caereport(n)
-         nextsymb()  }
-
-.
-
-//    CAE2
-
-GET "SYNHDR"
-
-LET rbexp() = VALOF
-  {1   LET a, OP = 0, symb
-
-        SWITCHON symb INTO
-
-    {  default:
-            caereport(32)
-
-        case S_QUERY:
-            nextsymb(); return list1(S_QUERY)
-
-        case S_TRUE:
-        case S_FALSE:
-        case S_NAME:
-            a := WORDNODE
-            nextsymb()
-            return a
-
-        case S_STRING:
-            a := newvec(WORDSIZE+1)
-            a[0] := S_STRING
-            FOR i = 0 TO WORDSIZE DO a[i+1] := wordv[i]
-            nextsymb()
-            return a
-
-        case S_NUMBER:
-            a := list2(S_NUMBER, DECVAL)
-            nextsymb()
-            return a
-
-        case S_LPAREN:
-            nextsymb()
-            a := rexp(0)
-            checkfor(S_RPAREN, 15)
-            return a
-
-        case S_VALOF:
-            nextsymb()
-            return list2(S_VALOF, rcom())
-
-        case S_VECAP: OP := S_RV
-        case S_LV:
-        case S_RV: nextsymb(); return list2(OP, rexp(35))
-
-        case S_PLUS: nextsymb(); return rexp(34)
-
-        case S_MINUS: nextsymb()
-                      a := rexp(34)
-                      TEST H1[a]=S_NUMBER
-                          THEN H2[a] := - H2[a]
-                            OR a := list2(S_NEG, a)
-                      return a
-
-        case S_NOT: nextsymb(); return list2(S_NOT, rexp(24))
-
-        case S_TABLE: nextsymb()
-                      return list2(S_TABLE, rexplist())   }1
-
-
-
-AND rexp(n) = VALOF
-    {1 LET a = rbexp()
-
-        LET b, C, P, Q = 0, 0, 0, 0
-
-  L: { LET OP = symb
-
-        IF nlpending return a
-
-        SWITCHON OP INTO
-    {b default: return a
-
-        case S_LPAREN: nextsymb()
-                       b := 0
-                       UNLESS symb=S_RPAREN DO b := rexplist()
-                       checkfor(S_RPAREN, 19)
-                       a := list3(S_FNAP, a, b)
-                       goto L
-
-        case S_VECAP: P := 40; goto LASSOC
-
-        case S_REM: case S_MULT: case S_DIV: P := 35; goto LASSOC
-
-        case S_PLUS: case S_MINUS: P := 34; goto LASSOC
-
-        case S_EQ: case S_NE:
-        case S_LE: case S_GE:
-        case S_LS: case S_GR:
-                IF n>=30 return a
-
-            {R nextsymb()
-                b := rexp(30)
-                a := list3(OP, a, b)
-                TEST C=0 THEN C :=  a
-                           OR C := list3(S_LOGAND, C, a)
-                a, OP := b, symb  }R REPEATWHILE S_EQ<=OP<=S_GE
-
-                a := C
-                goto L
-
-        case S_LSHIFT: case S_RSHIFT: P, Q := 25, 30; goto DIADIC
-
-        case S_LOGAND: P := 23; goto LASSOC
-
-        case S_LOGOR: P := 22; goto LASSOC
-
-        case S_EQV: case S_NEQV: P := 21; goto LASSOC
-
-        case S_COND:
-                IF n>=13 return a
-                nextsymb()
-                b := rexp(0)
-                checkfor(S_COMMA, 30)
-                a := list4(S_COND, a, b, rexp(0))
-                goto L
-
-        LASSOC: Q := P
-
-        DIADIC: IF n>=P return a
-                nextsymb()
-                a := list3(OP, a, rexp(Q))
-                goto L                     }b     }1
-
-LET rexplist() = VALOF
-    {1 LET a = 0
-        LET PTR = @a
-
-     { LET b = rexp(0)
-        UNLESS symb=S_COMMA DO { *PTR := b
-                                  return a  }
-        nextsymb()
-        *PTR := list3(S_COMMA, b, 0)
-        PTR := @H3[*PTR]  } REPEAT
-    }1
-
-LET rdef() = VALOF
-    {1 LET n = rnamelist()
-
-        SWITCHON symb INTO
-
-     { case S_LPAREN:
-             { LET a = 0
-                nextsymb()
-                UNLESS H1[n]=S_NAME DO caereport(40)
-                IF symb=S_NAME DO a := rnamelist()
-                checkfor(S_RPAREN, 41)
-
-                IF symb=S_BE DO
-                     { nextsymb()
-                        return list5(S_RTDEF, n, a, rcom(), 0)  }
-
-                IF symb=S_EQ DO
-                     { nextsymb()
-                        return list5(S_FNDEF, n, a, rexp(0), 0)  }
-
-                caereport(42)  }
-
-        default: caereport(44)
-
-        case S_EQ:
-                nextsymb()
-                IF symb=S_VEC DO
-                     { nextsymb()
-                        UNLESS H1[n]=S_NAME DO caereport(43)
-                        return list3(S_VECDEF, n, rexp(0))  }
-                return list3(S_VALDEF, n, rexplist())  }1
-
-.
-
-
-//    CAE4
-
-GET "SYNHDR"
-
-LET rbcom() = VALOF
-   {1 LET a, b, OP = 0, 0, symb
-
-        SWITCHON symb INTO
-     { default: return 0
-
-        case S_NAME: case S_NUMBER: case S_STRING:
-        case S_TRUE: case S_FALSE: case S_LV: case S_RV: case S_VECAP:
-        case S_LPAREN:
-                a := rexplist()
-
-                IF symb=S_ASSIGN THEN
-                    {  OP := symb
-                        nextsymb()
-                        return list3(OP, a, rexplist())  }
-
-                IF symb=S_COLON DO
-                     { UNLESS H1[a]=S_NAME DO caereport(50)
-                        nextsymb()
-                        return list4(S_COLON, a, rbcom(), 0)  }
-
-                IF H1[a]=S_FNAP DO
-                     { H1[a] := S_RTAP
-                        return a  }
-
-                caereport(51)
-                return a
-
-        case S_GOTO: case S_RESULTIS:
-                nextsymb()
-                return list2(OP, rexp(0))
-
-        case S_IF: case S_UNLESS:
-        case S_WHILE: case S_UNTIL:
-                nextsymb()
-                a := rexp(0)
-                ignore(S_DO)
-                return list3(OP, a, rcom())
-
-        case S_TEST:
-                nextsymb()
-                a := rexp(0)
-                ignore(S_DO)
-                b := rcom()
-                checkfor(S_OR, 54)
-                return list4(S_TEST, a, b, rcom())
-
-        case S_FOR:
-            {  LET i, J, k = 0, 0, 0
-                nextsymb()
-                a := rname()
-                checkfor(S_EQ, 57)
-                i := rexp(0)
-                checkfor(S_TO, 58)
-                J := rexp(0)
-                IF symb=S_BY DO { nextsymb()
-                                   k := rexp(0)  }
-                ignore(S_DO)
-                return list6(S_FOR, a, i, J, k, rcom())  }
-
-        case S_LOOP:
-        case S_BREAK: case S_RETURN: case S_FINISH: case S_ENDCASE:
-                a := WORDNODE
-                nextsymb()
-                return a
-
-        case S_SWITCHON:
-                nextsymb()
-                a := rexp(0)
-                checkfor(S_INTO, 60)
-                return list3(S_SWITCHON, a, rdsect(rdseq))
-
-        case S_CASE:
-                nextsymb()
-                a := rexp(0)
-                checkfor(S_COLON, 61)
-                return list3(S_CASE, a, rbcom())
-
-        case S_DEFAULT:
-                nextsymb()
-                checkfor(S_COLON, 62)
-                return list2(S_DEFAULT, rbcom())
-
-        case S_LSECT:
-                return rdsect(rdblockbody)   }1
-
-
-AND rcom() = VALOF
-    {1 LET a = rbcom()
-
-        IF a=0 DO caereport(51)
-
-        WHILE symb=S_REPEAT \/ symb=S_REPEATWHILE \/
-                    symb=S_REPEATUNTIL DO
-                  { LET OP = symb
-                     nextsymb()
-                     TEST OP=S_REPEAT
-                         THEN a := list2(OP, a)
-                           OR a := list3(OP, a, rexp(0))   }
-
-        return a  }1
-
-.
-#endif
 
 void wrc(ch)
 {
@@ -2594,4 +1666,1176 @@ void caereport(n)
         nextsymb();
     }
     longjump(rec_p, rec_l);
+}
+
+int value(ch)
+{
+    return ('0' <= ch && ch <= '9') ? (ch - '0') :
+           ('A' <= ch && ch <= 'F') ? (ch - 'A' + 10) :
+           ('a' <= ch && ch <= 'f') ? (ch - 'a' + 10) : 100;
+}
+
+void readnumber(radix)
+{
+    int d = value(ch);
+
+    decval = d;
+    if (d >= radix)
+        caereport(33);
+
+    for (;;) {
+        rch();
+        d = value(ch);
+        if (d >= radix)
+            return;
+        decval = radix*decval + d;
+    }
+}
+
+void rdtag(x)
+{
+    charp = 1;
+    charv[1] = x;
+    for (;;) {
+        rch();
+        if (! (('A' <= ch && ch <= 'Z') ||
+               ('a' <= ch && ch <= 'z') ||
+               ('0' <= ch && ch <= '9') || ch == '.'))
+            break;
+        charp = charp+1;
+        charv[charp] = ch;
+    }
+    charv[0] = charp;
+    wordsize = packstring(charv, wordv);
+}
+
+int *newvec(n)
+{
+    treep = treep - n - 1;
+    if (treep <= treevec) {
+        reportmax = 0;
+        caereport(98);
+    }
+    return treep;
+}
+
+int lookupword()
+{
+    int hashval = (wordv[0] + (wordv[wordsize] >> 1)) % nametablesize;
+    int *m = &nametable[hashval];
+    int i;
+next:
+    wordnode = (int*) *m;
+    if (wordnode != 0) {
+        for (i = 0; i <= wordsize; i++) {
+            if (wordnode[i+2] != wordv[i]) {
+                m = wordnode+1;
+                goto next;
+            }
+        }
+        return wordnode[0];
+    }
+    wordnode = newvec(wordsize+2);
+    wordnode[0] = S_NAME;
+    wordnode[1] = nametable[hashval];
+    for (i = 0; i <= wordsize; i++)
+        wordnode[i+2] = wordv[i];
+    nametable[hashval] = (int) wordnode;
+    return S_NAME;
+}
+
+FILE *findlibinput(name)
+    int *name;
+{
+    char path [256];
+
+    if (sizeof(INCDIR) + strlen((char*) name) > 255)
+        return 0;
+    strcpy(path, INCDIR);
+    strcat(path, (char*) name);
+    return fopen(path, "r");
+}
+
+void performget()
+{
+    nextsymb();
+    if (symb != S_STRING)
+        caereport(97);
+
+    if (option[5])
+        return;
+
+    getv[getp] = (int) sourcestream;
+    getv[getp+1] = linecount;
+    getv[getp+2] = ch;
+    getp = getp + 3;
+    linecount = 1;
+    sourcestream = fopen((char*) wordv, "r");
+    if (sourcestream == 0)
+        sourcestream = findlibinput(wordv);
+    if (sourcestream == 0)
+        caereport(96);
+    rch();
+}
+
+void nextsymb()
+{
+    nlpending = FALSE;
+next:
+    if (pptrace) {
+        putchar(ch);
+    }
+
+    switch (ch) {
+    case '\n':
+        linecount = linecount + 1;
+        nlpending = TRUE;           // ignorable characters
+    case '\v':
+    case '\t':
+    case ' ':
+        do {
+            rch();
+        } while (ch == ' ');
+        goto next;
+
+    case '0': case '1': case '2': case '3': case '4':
+    case '5': case '6': case '7': case '8': case '9':
+        symb = S_NUMBER;
+        readnumber(10);
+        return;
+
+    case 'A': case 'B': case 'C': case 'D': case 'E':
+    case 'F': case 'G': case 'H': case 'I': case 'J':
+    case 'K': case 'L': case 'M': case 'N': case 'O':
+    case 'P': case 'Q': case 'R': case 'S': case 'T':
+    case 'U': case 'V': case 'W': case 'X': case 'Y':
+    case 'Z':
+    case 'a': case 'b': case 'c': case 'd': case 'e':
+    case 'f': case 'g': case 'h': case 'i': case 'j':
+    case 'k': case 'l': case 'm': case 'n': case 'o':
+    case 'p': case 'q': case 'r': case 's': case 't':
+    case 'u': case 'v': case 'w': case 'x': case 'y':
+    case 'z':
+        rdtag(ch);
+        symb = lookupword();
+        if (symb == S_GET) {
+            performget();
+            goto next;
+        }
+        return;
+
+    case '$':
+        rch();
+        if (ch != '(' && ch != ')')
+            caereport(91);
+        symb = (ch == '(') ? S_LSECT : S_RSECT;
+        rdtag('$');
+        lookupword();
+        return;
+
+    case '[':
+    case '(': symb = S_LPAREN; goto L;
+    case ']':
+    case ')': symb = S_RPAREN; goto L;
+
+    case '#':
+        symb = S_NUMBER;
+        rch();
+        if ('0' <= ch && ch <= '7') {
+            readnumber(8);
+            return;
+        }
+        if (ch == 'B') {
+            rch();
+            readnumber(2);
+            return;
+        }
+        if (ch == 'O') {
+            rch();
+            readnumber(8);
+            return;
+        }
+        if (ch == 'X') {
+            rch();
+            readnumber(16);
+            return;
+        }
+        caereport(33);
+
+    case '?': symb = S_QUERY;     goto L;
+    case '+': symb = S_PLUS;      goto L;
+    case ',': symb = S_COMMA;     goto L;
+    case ';': symb = S_SEMICOLON; goto L;
+    case '@': symb = S_LV;        goto L;
+    case '&': symb = S_LOGAND;    goto L;
+    case '=': symb = S_EQ;        goto L;
+    case '!': symb = S_VECAP;     goto L;
+    case '_': symb = S_ASSIGN;    goto L;
+    case '*': symb = S_MULT;      goto L;
+
+    case '/':
+        rch();
+        if (ch == '\\') {
+            symb = S_LOGAND;
+            goto L;
+        }
+        if (ch == '/')
+            goto comment;
+        if (ch != '*') {
+            symb = S_DIV;
+            return;
+        }
+        rch();
+        while (ch != EOF) {
+            if (ch == '*') {
+                rch();
+                if (ch != '/')
+                    continue;
+                rch();
+                goto next;
+            } else {
+                if (ch == '\n')
+                    linecount = linecount+1;
+                rch();
+            }
+        }
+        caereport(63);
+comment:
+        do {
+            rch();
+        } while (ch != '\n' && ch != EOF);
+        goto next;
+
+    case '|':
+        rch();
+        if (ch == '|')
+             goto comment;
+        symb = S_LOGOR;
+        return;
+
+    case '\\':
+        rch();
+        if (ch == '/') {
+            symb = S_LOGOR;
+            goto L;
+        }
+        if (ch == '=') {
+            symb = S_NE;
+            goto L;
+        }
+        symb = S_NOT;
+        return;
+
+    case '<':
+        rch();
+        if (ch == '=') {
+            symb = S_LE;
+            goto L;
+        }
+        if (ch == '<') {
+            symb = S_LSHIFT;
+            goto L;
+        }
+        symb = S_LS;
+        return;
+
+    case '>':
+        rch();
+        if (ch == '=') {
+            symb = S_GE;
+            goto L;
+        }
+        if (ch == '>') {
+            symb = S_RSHIFT;
+            goto L;
+        }
+        symb = S_GR;
+        return;
+
+    case '-':
+        rch();
+        if (ch == '>') {
+            symb = S_COND;
+            goto L;
+        }
+        symb = S_MINUS;
+        return;
+
+    case ':':
+        rch();
+        if (ch == '=') {
+            symb = S_ASSIGN;
+            goto L;
+        }
+        symb = S_COLON;
+        return;
+
+     case '\'': case '\"': {
+        int quote = ch;
+        charp = 0;
+
+        for (;;) {
+            rch();
+            if (ch == quote || charp == 255) {
+                if (ch != quote)
+                    caereport(95);
+                if (charp == 1 && ch == '\'') {
+                    symb = S_NUMBER;
+                    goto L;
+                }
+                charv[0] = charp;
+                wordsize = packstring(charv, wordv);
+                symb = S_STRING;
+                goto L;
+            }
+
+            if (ch == '\n')
+                linecount = linecount + 1;
+
+            if (ch == '*') {
+                rch();
+                if (ch == '\n') {
+                    linecount = linecount+1;
+                    do {
+                        rch();
+                    } while (ch == ' ' || ch == '\t');
+                    if (ch != '*')
+                        caereport(34);
+                    continue;
+                }
+                if (ch == 'T') ch = '\t';
+                if (ch == 'S') ch = ' ';
+                if (ch == 'N') ch = '\n';
+                if (ch == 'B') ch = '\b';
+                if (ch == 'P') ch = '\f';
+            }
+
+            decval = ch;
+            charp = charp+1;
+            charv[charp] = ch;
+        }
+    }
+    case '.':
+    case EOF:
+        if (getp == 0) {
+            symb = S_END;
+            return;
+        }
+        fclose(sourcestream);
+        getp = getp - 3;
+        sourcestream = (FILE*) getv[getp];
+        linecount = getv[getp+1];
+        ch = getv[getp+2];
+        goto next;
+
+    default:
+        ch = ' ';
+        caereport(94);
+        rch();
+        goto next;
+    }
+L:
+    rch();
+}
+
+int readn()
+{
+    int sum = 0;
+    int neg = FALSE;
+L:
+    terminator = getc(sourcestream);
+    switch (terminator) {
+    case ' ':
+    case '\t':
+    case '\n': goto L;
+
+    case '-':  neg = TRUE;
+    case '+':  terminator = getc(sourcestream);
+    }
+    while ('0' <= terminator && terminator <= '9') {
+        sum = 10*sum + terminator - '0';
+        terminator = getc(sourcestream);
+    }
+    if (neg)
+        sum = -sum;
+    return sum;
+}
+
+void ignore(item)
+{
+    if (symb == item)
+        nextsymb();
+}
+
+void checkfor(item, n)
+{
+    if (symb != item)
+        caereport(n);
+    nextsymb();
+}
+
+int *rdsect(func)
+    int *(*func)();
+{
+    int *tag = wordnode;
+    int *a = 0;
+
+    checkfor(S_LSECT, 6);
+    a = func();
+    if (symb != S_RSECT)
+        caereport(7);
+
+    if (tag == wordnode)
+        nextsymb();
+    else if (wordnode == nulltag) {
+        symb = 0;
+        caereport(9);
+    }
+    return a;
+}
+
+int *rname()
+{
+    int *a = wordnode;
+
+    checkfor(S_NAME, 8);
+    return a;
+}
+
+int *list1(x)
+{
+    int *p = newvec(0);
+    p[0] = x;
+    return p;
+}
+
+int *list2(x, y)
+{
+    int *p = newvec(1);
+    p[0] = x;
+    p[1] = y;
+    return p;
+}
+
+int *list3(x, y, z)
+{
+    int *p = newvec(2);
+    p[0] = x;
+    p[1] = y;
+    p[2] = z;
+    return p;
+}
+
+int *list4(x, y, z, t)
+{
+    int *p = newvec(3);
+    p[0] = x;
+    p[1] = y;
+    p[2] = z;
+    p[3] = t;
+    return p;
+}
+
+int *list5(x, y, z, t, u)
+{
+    int *p = newvec(4);
+    p[0] = x;
+    p[1] = y;
+    p[2] = z;
+    p[3] = t;
+    p[4] = u;
+    return p;
+}
+
+int *list6(x, y, z, t, u, v)
+{
+    int *p = newvec(5);
+    p[0] = x;
+    p[1] = y;
+    p[2] = z;
+    p[3] = t;
+    p[4] = u;
+    p[5] = v;
+    return p;
+}
+
+int *rexplist()
+{
+    int *a = 0;
+    int *ptr = (int*) &a;
+
+    for (;;) {
+        int *b = rexp(0);
+        if (symb != S_COMMA) {
+            *ptr = (int) b;
+            return a;
+        }
+        nextsymb();
+        *ptr = (int) list3(S_COMMA, b, 0);
+        ptr = &H3[(int*) *ptr];
+    }
+}
+
+int *rdseq()
+{
+    int *a = 0;
+
+    ignore(S_SEMICOLON);
+    a = rcom();
+    if (symb == S_RSECT || symb == S_END)
+        return a;
+    return list3(S_SEQ, a, rdseq());
+}
+
+int *rbcom()
+{
+    int *a = 0;
+    int *b = 0;
+    int op = symb;
+
+    switch (symb) {
+    default:
+        return 0;
+
+    case S_NAME: case S_NUMBER: case S_STRING:
+    case S_TRUE: case S_FALSE:  case S_LV:    case S_RV: case S_VECAP:
+    case S_LPAREN:
+        a = rexplist();
+        if (symb == S_ASSIGN) {
+            op = symb;
+            nextsymb();
+            return list3(op, a, rexplist());
+        }
+        if (symb == S_COLON) {
+            if (H1[a] != S_NAME)
+                caereport(50);
+            nextsymb();
+            return list4(S_COLON, a, rbcom(), 0);
+        }
+        if (H1[a] == S_FNAP) {
+            H1[a] = S_RTAP;
+            return a;
+        }
+        caereport(51);
+        return a;
+
+    case S_GOTO: case S_RESULTIS:
+        nextsymb();
+        return list2(op, rexp(0));
+
+    case S_IF:    case S_UNLESS:
+    case S_WHILE: case S_UNTIL:
+        nextsymb();
+        a = rexp(0);
+        ignore(S_DO);
+        return list3(op, a, rcom());
+
+    case S_TEST:
+        nextsymb();
+        a = rexp(0);
+        ignore(S_DO);
+        b = rcom();
+        checkfor(S_OR, 54);
+        return list4(S_TEST, a, b, rcom());
+
+    case S_FOR: {
+        int *i = 0;
+        int *j = 0;
+        int *k = 0;
+        nextsymb();
+        a = rname();
+        checkfor(S_EQ, 57);
+        i = rexp(0);
+        checkfor(S_TO, 58);
+        j = rexp(0);
+        if (symb == S_BY) {
+            nextsymb();
+            k = rexp(0);
+        }
+        ignore(S_DO);
+        return list6(S_FOR, a, i, j, k, rcom());
+    }
+    case S_LOOP:
+    case S_BREAK: case S_RETURN: case S_FINISH: case S_ENDCASE:
+        a = wordnode;
+        nextsymb();
+        return a;
+
+    case S_SWITCHON:
+        nextsymb();
+        a = rexp(0);
+        checkfor(S_INTO, 60);
+        return list3(S_SWITCHON, a, rdsect(rdseq));
+
+    case S_CASE:
+        nextsymb();
+        a = rexp(0);
+        checkfor(S_COLON, 61);
+        return list3(S_CASE, a, rbcom());
+
+    case S_DEFAULT:
+        nextsymb();
+        checkfor(S_COLON, 62);
+        return list2(S_DEFAULT, rbcom());
+
+    case S_LSECT:
+        return rdsect(rdblockbody);
+    }
+}
+
+int *rcom()
+{
+    int *a = rbcom();
+
+    if (a == 0)
+        caereport(51);
+
+    while (symb == S_REPEAT || symb == S_REPEATWHILE || symb == S_REPEATUNTIL)
+    {
+        int op = symb;
+        nextsymb();
+        if (op == S_REPEAT)
+            a = list2(op, a);
+        else
+            a = list3(op, a, rexp(0));
+    }
+    return a;
+}
+
+int *rbexp()
+{
+    int *a = 0;
+    int op = symb;
+    int i;
+
+    switch (symb) {
+    default:
+        caereport(32);
+
+    case S_QUERY:
+        nextsymb();
+        return list1(S_QUERY);
+
+    case S_TRUE:
+    case S_FALSE:
+    case S_NAME:
+        a = wordnode;
+        nextsymb();
+        return a;
+
+    case S_STRING:
+        a = newvec(wordsize+1);
+        a[0] = S_STRING;
+        for (i = 0; i <= wordsize; i++)
+            a[i+1] = wordv[i];
+        nextsymb();
+        return a;
+
+    case S_NUMBER:
+        a = list2(S_NUMBER, decval);
+        nextsymb();
+        return a;
+
+    case S_LPAREN:
+        nextsymb();
+        a = rexp(0);
+        checkfor(S_RPAREN, 15);
+        return a;
+
+    case S_VALOF:
+        nextsymb();
+        return list2(S_VALOF, rcom());
+
+    case S_VECAP:
+        op = S_RV;
+    case S_LV:
+    case S_RV:
+        nextsymb();
+        return list2(op, rexp(35));
+
+    case S_PLUS:
+        nextsymb();
+        return rexp(34);
+
+    case S_MINUS:
+        nextsymb();
+        a = rexp(34);
+        if (H1[a] == S_NUMBER)
+            H2[a] = - H2[a];
+        else
+            a = list2(S_NEG, a);
+        return a;
+
+    case S_NOT:
+        nextsymb();
+        return list2(S_NOT, rexp(24));
+
+    case S_TABLE:
+        nextsymb();
+        return list2(S_TABLE, rexplist());
+    }
+}
+
+int *rexp(n)
+{
+    int *a = rbexp();
+    int *b = 0;
+    int *c = 0;
+    int p = 0;
+    int q = 0;
+    int op;
+L:
+    op = symb;
+    if (nlpending)
+        return a;
+
+    switch (op) {
+    default:
+        return a;
+
+    case S_LPAREN:
+        nextsymb();
+        b = 0;
+        if (symb != S_RPAREN)
+            b = rexplist();
+        checkfor(S_RPAREN, 19);
+        a = list3(S_FNAP, a, b);
+        goto L;
+
+    case S_VECAP:
+        p = 40;
+        goto LASSOC;
+
+    case S_REM: case S_MULT: case S_DIV:
+        p = 35;
+        goto LASSOC;
+
+    case S_PLUS: case S_MINUS:
+        p = 34;
+        goto LASSOC;
+
+    case S_EQ: case S_NE:
+    case S_LE: case S_GE:
+    case S_LS: case S_GR:
+        if (n >= 30)
+            return a;
+
+        do {
+            nextsymb();
+            b = rexp(30);
+            a = list3(op, a, b);
+            if (c == 0)
+                c = a;
+            else
+                c = list3(S_LOGAND, c, a);
+            a = b;
+            op = symb;
+        } while (S_EQ <= op && op <= S_GE);
+
+        a = c;
+        goto L;
+
+    case S_LSHIFT: case S_RSHIFT:
+        p = 25;
+        q = 30;
+        goto DIADIC;
+
+    case S_LOGAND:
+        p = 23;
+        goto LASSOC;
+
+    case S_LOGOR:
+        p = 22;
+        goto LASSOC;
+
+    case S_EQV: case S_NEQV:
+        p = 21;
+        goto LASSOC;
+
+    case S_COND:
+        if (n >= 13)
+            return a;
+        nextsymb();
+        b = rexp(0);
+        checkfor(S_COMMA, 30);
+        a = list4(S_COND, a, b, rexp(0));
+        goto L;
+LASSOC:
+        q = p;
+DIADIC:
+        if (n >= p)
+            return a;
+        nextsymb();
+        a = list3(op, a, rexp(q));
+        goto L;
+    }
+}
+
+int *rdcdefs()
+{
+    int *a = 0;
+    int *b = 0;
+    int *ptr = (int*) &a;
+    int *p = rec_p;
+    int *l = rec_l;
+    int jumpbuf[JUMPSZ];
+
+    rec_p = jumpbuf;
+    rec_l = &&recover;
+    setjump(rec_p, recover);
+
+    do {
+        b = rname();
+        if (symb == S_EQ || symb == S_COLON)
+            nextsymb();
+        else
+            caereport(45);
+
+        *ptr = (int) list4(S_CONSTDEF, 0, (int) b, rexp(0));
+        ptr = &H2[(int*) *ptr];
+recover:
+        ignore(S_SEMICOLON);
+    } while (symb == S_NAME);
+
+    rec_p = p;
+    rec_l = l;
+    return a;
+}
+
+int *rnamelist()
+{
+    int *a = rname();
+
+    if (symb != S_COMMA)
+        return a;
+    nextsymb();
+    return list3(S_COMMA, a, rnamelist());
+}
+
+int *rdef()
+{
+    int *n = rnamelist();
+
+    switch (symb) {
+    case S_LPAREN: {
+        int *a = 0;
+        nextsymb();
+        if (H1[n] != S_NAME)
+            caereport(40);
+        if (symb == S_NAME)
+            a = rnamelist();
+        checkfor(S_RPAREN, 41);
+
+        if (symb == S_BE) {
+            nextsymb();
+            return list5(S_RTDEF, n, a, rcom(), 0);
+        }
+        if (symb == S_EQ) {
+            nextsymb();
+            return list5(S_FNDEF, n, a, rexp(0), 0);
+        }
+        caereport(42);
+    }
+    default:
+        caereport(44);
+    case S_EQ:
+        nextsymb();
+        if (symb == S_VEC) {
+            nextsymb();
+            if (H1[n] != S_NAME)
+                caereport(43);
+            return list3(S_VECDEF, n, rexp(0));
+        }
+        return list3(S_VALDEF, n, rexplist());
+    }
+}
+
+int *rdblockbody()
+{
+    int *p = rec_p;
+    int *l = rec_l;
+    int *a = 0;
+    int jumpbuf[JUMPSZ];
+
+    rec_p = jumpbuf;
+    rec_l = &&recover;
+    setjump(rec_p, recover);
+
+    ignore(S_SEMICOLON);
+
+    switch (symb) {
+    case S_MANIFEST:
+    case S_STATIC:
+    case S_GLOBAL: {
+        int op = symb;
+        nextsymb();
+        a = rdsect(rdcdefs);
+        a = list3(op, a, rdblockbody());
+        break;
+    }
+    case S_LET:
+        nextsymb();
+        a = rdef();
+recover:
+        while (symb == S_AND) {
+            nextsymb();
+            a = list3(S_AND, a, rdef());
+        }
+        a = list3(S_LET, a, rdblockbody());
+        break;
+
+    default:
+        a = rdseq();
+        if (symb != S_RSECT && symb != S_END)
+            caereport(51);
+        break;
+
+    case S_RSECT: case S_END:
+        break;
+    }
+    rec_p = p;
+    rec_l = l;
+    return a;
+}
+
+void d(s, item)
+    void *s;
+{
+    unpackstring(s, charv);
+    wordsize = packstring(charv, wordv);
+    lookupword();
+    wordnode[0] = item;
+}
+
+void declsyswords()
+{
+    d("AND", S_AND);
+
+    d("BE", S_BE);
+    d("BREAK", S_BREAK);
+    d("BY", S_BY);
+
+    d("CASE", S_CASE);
+
+    d("DO", S_DO);
+    d("DEFAULT", S_DEFAULT);
+
+    d("EQ", S_EQ);
+    d("EQV", S_EQV);
+    d("ELSE", S_OR);
+    d("ENDCASE", S_ENDCASE);
+
+    d("FALSE", S_FALSE);
+    d("FOR", S_FOR);
+    d("FINISH", S_FINISH);
+
+    d("GOTO", S_GOTO);
+    d("GE", S_GE);
+    d("GR", S_GR);
+    d("GLOBAL", S_GLOBAL);
+    d("GET", S_GET);
+
+    d("IF", S_IF);
+    d("INTO", S_INTO);
+
+    d("LET", S_LET);
+    d("LV", S_LV);
+    d("LE", S_LE);
+    d("LS", S_LS);
+    d("LOGOR", S_LOGOR);
+    d("LOGAND", S_LOGAND);
+    d("LOOP", S_LOOP);
+    d("LSHIFT", S_LSHIFT);
+
+    d("MANIFEST", S_MANIFEST);
+
+    d("NE", S_NE);
+    d("NOT", S_NOT);
+    d("NEQV", S_NEQV);
+
+    d("OR", S_OR);
+
+    d("RESULTIS", S_RESULTIS);
+    d("RETURN", S_RETURN);
+    d("REM", S_REM);
+    d("RSHIFT", S_RSHIFT);
+    d("RV", S_RV);
+    d("REPEAT", S_REPEAT);
+    d("REPEATWHILE", S_REPEATWHILE);
+    d("REPEATUNTIL", S_REPEATUNTIL);
+
+    d("SWITCHON", S_SWITCHON);
+    d("STATIC", S_STATIC);
+
+    d("TO", S_TO);
+    d("TEST", S_TEST);
+    d("TRUE", S_TRUE);
+    d("THEN", S_DO);
+    d("TABLE", S_TABLE);
+
+    d("UNTIL", S_UNTIL);
+    d("UNLESS", S_UNLESS);
+
+    d("VEC", S_VEC);
+    d("VALOF", S_VALOF);
+
+    d("WHILE", S_WHILE);
+
+    d("$", 0);
+    nulltag = wordnode;
+}
+
+int *formtree()
+{
+    int getbuf [10];             // FOR 'GET' STREAMS
+    int wordbuf [100];
+    int charbuf [256];
+    int namebuf [100];
+    int jumpbuf[JUMPSZ];
+    int i;
+    int *a;
+
+    chcount = 0;
+    for (i = 0; i<63; i++)
+        chbuf[i] = 0;
+
+    getv = getbuf;
+    getp = 0;
+
+    wordv = wordbuf;
+
+    charv = charbuf;
+    charp = 0;
+
+    nametable = namebuf;
+    nametablesize = 100;
+    for (i = 0; i<100; i++)
+        nametable[i] = 0;
+
+    rec_p = jumpbuf;
+    rec_l = &&L;
+    setjump(rec_p, L);
+
+    linecount = 1;
+    prline = 0;
+    rch();
+
+    if (ch == EOF)
+        return 0;
+    declsyswords();
+
+L:  nextsymb();
+
+    if (option[1]) {            // PP DEBUGGING OPTION
+        printf("%u %s\n", symb, (char*) wordv);
+        if (symb == S_END)
+            return 0;
+        goto L;
+    }
+
+    a = rdblockbody();
+    if (symb != S_END) {
+        caereport(99);
+        goto L;
+    }
+    return a;
+}
+
+void comp(v, treemax)
+    int *v;
+{
+    int b [63];
+    int *a;
+
+    chbuf = b;
+    for (;;) {
+        treep = v+treemax;
+        treevec = v;
+
+        a = formtree();
+        if (a == 0)
+            break;
+
+        printf("\nTREE SIZE %u\n", treemax+treevec-treep);
+
+        if (option[2]) {
+            printf("AE TREE\n");
+            plist(a, 0, 20);
+            newline();
+        }
+
+        if (reportcount != 0)
+            exit(8);
+
+        if (! option[3])
+            compileae(a);
+    }
+}
+
+int main()
+{
+    int opt[20];
+    int treesize = 5500;
+    int i;
+
+    printf("\nBCPL Translator\n");
+
+    option = opt;
+    savespacesize = 2;
+    pptrace = FALSE;
+    prsource = FALSE;
+    for (i = 0; i < 20; i++)
+        opt[i] = FALSE;
+
+    sourcestream = fopen("OPTIONS", "r");
+    if (sourcestream != 0) {
+        int ch = 0;
+        int n = 0;
+        printf("OPTIONS  ");
+
+        for (;;) {
+            ch = getc(sourcestream);
+L:          if (ch == '\n' || ch == EOF)
+                break;
+            putchar(ch);
+            if (ch == 'P') n = 1;
+            if (ch == 'T') n = 2;
+            if (ch == 'C') n = 3;
+            if (ch == 'M') n = 4;
+            if (ch == 'N') n = 5;
+            if (ch == 'S') prsource = TRUE;
+            if (ch == 'E') pptrace = TRUE;
+            if (ch == 'L') {
+                treesize = readn();
+                printf("%u", treesize);
+                ch = terminator;
+                goto L;
+            }
+            if (ch == '3')
+                savespacesize = 3;
+            option[n] = TRUE;
+        }
+        newline();
+        fclose(sourcestream);
+    }
+
+    reportmax = 20;
+    reportcount = 0;
+    sourcestream = stdin;
+
+    ocode = fopen("OCODE", "w");
+    if (ocode == 0) {
+        perror("OCODE");
+        exit(8);
+    }
+
+    aptovec(comp, treesize);
+
+    //if (option[4]) mapstore();
+
+    printf("\nPHASE 1 COMPLETE\n");
+    if (reportcount != 0) {
+        exit(8);
+    }
+    return 0;
 }

@@ -4,13 +4,13 @@ LDFLAGS = -g
 
 PREFIX  = /usr/local
 
-all:    btran.o
+all:    btran
 
 #
 # B-to-ocode translator
 #
-btran:  btran.o blib.o
-	$(CC) $(LDFLAGS) -o btran btran.o blib.o
+btran:  btran.o
+	$(CC) $(LDFLAGS) -o btran btran.o
 
 #
 # Installation
