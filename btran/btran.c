@@ -29,7 +29,7 @@ int packstring(src, dest)
     do {
         putbyte(dest, i++, 0);
     } while (i & 3);
-    return i >> 2;
+    return (i - 1) >> 2;
 }
 
 void unpackstring(src, dest)
@@ -1694,8 +1694,8 @@ void readnumber(radix)
 
 void rdtag(x)
 {
-    charp = 1;
-    charv[1] = x;
+    charp = 0;
+    charv[0] = x;
     for (;;) {
         rch();
         if (! (('A' <= ch && ch <= 'Z') ||
@@ -1705,7 +1705,7 @@ void rdtag(x)
         charp = charp+1;
         charv[charp] = ch;
     }
-    charv[0] = charp;
+    charv[charp+1] = 0;
     wordsize = packstring(charv, wordv);
 }
 
@@ -1983,7 +1983,7 @@ comment:
                     symb = S_NUMBER;
                     goto L;
                 }
-                charv[0] = charp;
+                charv[charp] = 0;
                 wordsize = packstring(charv, wordv);
                 symb = S_STRING;
                 goto L;
@@ -2011,8 +2011,8 @@ comment:
             }
 
             decval = ch;
-            charp = charp+1;
             charv[charp] = ch;
+            charp = charp+1;
         }
     }
     case '.':
