@@ -1,3 +1,11 @@
+/*
+ * BCPL compiler rewritten to C.
+ *
+ * Copyright (C) 2013 Serge Vakulenko
+ *
+ * It is free software; you can redistribute it and/or modify it
+ * under the terms of the "Artistic License".
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
