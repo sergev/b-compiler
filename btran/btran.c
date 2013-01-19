@@ -2122,52 +2122,57 @@ int *list1(x)
 }
 
 int *list2(x, y)
+    int *y;
 {
     int *p = newvec(1);
     p[0] = x;
-    p[1] = y;
+    p[1] = (int) y;
     return p;
 }
 
 int *list3(x, y, z)
+    int *y, *z;
 {
     int *p = newvec(2);
     p[0] = x;
-    p[1] = y;
-    p[2] = z;
+    p[1] = (int) y;
+    p[2] = (int) z;
     return p;
 }
 
 int *list4(x, y, z, t)
+    int *y, *z, *t;
 {
     int *p = newvec(3);
     p[0] = x;
-    p[1] = y;
-    p[2] = z;
-    p[3] = t;
+    p[1] = (int) y;
+    p[2] = (int) z;
+    p[3] = (int) t;
     return p;
 }
 
 int *list5(x, y, z, t, u)
+    int *y, *z, *t, *u;
 {
     int *p = newvec(4);
     p[0] = x;
-    p[1] = y;
-    p[2] = z;
-    p[3] = t;
-    p[4] = u;
+    p[1] = (int) y;
+    p[2] = (int) z;
+    p[3] = (int) t;
+    p[4] = (int) u;
     return p;
 }
 
 int *list6(x, y, z, t, u, v)
+    int *y, *z, *t, *u, *v;
 {
     int *p = newvec(5);
     p[0] = x;
-    p[1] = y;
-    p[2] = z;
-    p[3] = t;
-    p[4] = u;
-    p[5] = v;
+    p[1] = (int) y;
+    p[2] = (int) z;
+    p[3] = (int) t;
+    p[4] = (int) u;
+    p[5] = (int) v;
     return p;
 }
 
@@ -2344,7 +2349,7 @@ int *rbexp()
         return a;
 
     case S_NUMBER:
-        a = list2(S_NUMBER, decval);
+        a = list2(S_NUMBER, (int*) decval);
         nextsymb();
         return a;
 
@@ -2490,7 +2495,7 @@ int *rdcdefs()
     int *ptr = (int*) &a;
     int *p = rec_p;
     int *l = rec_l;
-    int jumpbuf[JUMPSZ];
+    int jumpbuf [JUMPSZ];
 
     rec_p = jumpbuf;
     rec_l = &&recover;
@@ -2503,7 +2508,7 @@ int *rdcdefs()
         else
             caereport(45);
 
-        *ptr = (int) list4(S_CONSTDEF, 0, (int) b, rexp(0));
+        *ptr = (int) list4(S_CONSTDEF, 0, b, rexp(0));
         ptr = &H2[(int*) *ptr];
 recover:
         ignore(S_SEMICOLON);
@@ -2567,7 +2572,7 @@ int *rdblockbody()
     int *p = rec_p;
     int *l = rec_l;
     int *a = 0;
-    int jumpbuf[JUMPSZ];
+    int jumpbuf [JUMPSZ];
 
     rec_p = jumpbuf;
     rec_l = &&recover;
@@ -2703,7 +2708,7 @@ int *formtree()
     int wordbuf [100];
     int charbuf [256];
     int namebuf [100];
-    int jumpbuf[JUMPSZ];
+    int jumpbuf [JUMPSZ];
     int i;
     int *a;
 
@@ -2756,7 +2761,7 @@ L:  nextsymb();
 void comp(v, treemax)
     int *v;
 {
-    int b [63];
+    int b [64];
     int *a;
 
     chbuf = b;
