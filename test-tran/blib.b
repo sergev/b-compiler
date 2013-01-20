@@ -2,14 +2,19 @@
 
 GET "LIBHDR"
 
-LET writes(s) BE
-    FOR i = 1 TO getbyte(s, 0) DO wrch(getbyte(s, i))
+LET writes(s)
+{
+    FOR i = 1 TO getbyte(s, 0) DO
+        wrch(getbyte(s, i))
+}
 
-AND unpackstring(s, v) BE
+AND unpackstring(s, v)
+{
     FOR i = 0 TO getbyte(s, 0) DO
         v!i := getbyte(s, i)
+}
 
-AND packstring(v, s) = VALOF
+AND packstring(v, s)
 {
     LET n = v!0 & 255
     LET i = n/4
@@ -25,7 +30,7 @@ AND packstring(v, s) = VALOF
 
 // THE DEFINITIONS THAT FOLLOW ARE MACHINE INDEPENDENT
 
-AND writed(n, d) BE
+AND writed(n, d)
 {
     LET t = VEC 20
     AND i, k = 0, n
@@ -40,13 +45,22 @@ AND writed(n, d) BE
         wrch(t!j+'0')
 }
 
-AND writen(n) BE writed(n, 0)
+AND writen(n)
+{
+    writed(n, 0)
+}
 
-AND newline() BE wrch('*N')
+AND newline()
+{
+    wrch('*N')
+}
 
-AND newpage() BE wrch('*P')
+AND newpage()
+{
+    wrch('*P')
+}
 
-AND readn() = VALOF
+AND readn()
 {
     LET sum = 0
     AND neg = FALSE
@@ -69,14 +83,14 @@ L:  terminator := rdch()
     RESULTIS sum
 }
 
-AND writeoct(n, d) BE
+AND writeoct(n, d)
 {
     IF d>1 DO
         writeoct(n>>3, d-1)
     wrch((n/\7)+'0')
 }
 
-AND writehex(n, d) BE
+AND writehex(n, d)
 {
     IF d>1 DO
         writehex(n>>4, d-1)
@@ -85,7 +99,7 @@ AND writehex(n, d) BE
         '8','9','A','B','C','D','E','F')
 }
 
-AND writef(format, a, b, c, d, e, f, g, h, i, j, k) BE
+AND writef(format, a, b, c, d, e, f, g, h, i, j, k)
 {
     LET t = @a
 
@@ -117,4 +131,4 @@ AND writef(format, a, b, c, d, e, f, g, h, i, j, k) BE
     }
 }
 
-//AND mapstore() BE writes("*Nmapstore NOT IMPLEMENTED*N")
+//AND mapstore() { writes("*Nmapstore NOT IMPLEMENTED*N"); }

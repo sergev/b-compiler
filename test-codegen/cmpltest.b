@@ -57,19 +57,20 @@ MANIFEST {
     K2 = 2
 }
 
-LET writes(s) BE
+LET writes(s)
 {
     FOR i = 1 TO getbyte(s, 0) DO wrch(getbyte(s, i))
+    RETURN
 }
 
-AND writeoct(n, d) BE
+AND writeoct(n, d)
 {
     IF d>1 DO
         writeoct(n>>3, d-1)
     wrch((n/\7)+'0')
 }
 
-AND writehex(n, d) BE
+AND writehex(n, d)
 {
     IF d>1 DO
         writehex(n>>4, d-1)
@@ -78,7 +79,7 @@ AND writehex(n, d) BE
         '8','9','A','B','C','D','E','F')
 }
 
-AND writed(n, d) BE
+AND writed(n, d)
 {
     LET t = VEC 20
     AND i, k = 0, n
@@ -93,7 +94,7 @@ AND writed(n, d) BE
         wrch(t!j+'0')
 }
 
-AND writef(format, a, b, c, d, e, f, g, h, i, j, k) BE
+AND writef(format, a, b, c, d, e, f, g, h, i, j, k)
 {
     LET t = @a
 
@@ -123,13 +124,16 @@ AND writef(format, a, b, c, d, e, f, g, h, i, j, k) BE
         }
         OR wrch(k)
     }
+    RETURN
 }
 
-LET t(x, y) = VALOF
+LET t(x, y)
 {
     testno := testno + 1
     testcount := testcount + 1
-    IF x=y & quiet RESULTIS y
+    IF x=y & quiet
+        RESULTIS y
+
     writef("%I3 %I5 ", testno, y)
     TEST x=y THEN
         writes("OK*N")
@@ -140,16 +144,19 @@ LET t(x, y) = VALOF
     RESULTIS y
 }
 
-LET t1(a,b,c,D,E,f,g) = t(a+b+c+D+E+f, g)
+LET t1(a,b,c,D,E,f,g)
+{
+    RESULTIS t(a+b+c+D+E+f, g)
+}
 
-LET start(parm) BE
+LET start(parm)
 {
     LET v1 = VEC 200
     AND v2 = VEC 200
     tester(0, 1, 2, v1, v2)
 }
 
-AND tester(x, y, z, v1, v2) BE
+AND tester(x, y, z, v1, v2)
 {
     writef("*NCGTESTER ENTERED *N*N")
 
@@ -220,8 +227,8 @@ AND tester(x, y, z, v1, v2) BE
 
     t(#B1100&#B1010, #B1000)
     t(#B1100 \/ #B1010, #B1110)
-    t((#B1100 EQV   #B1010) & #B11111, #B11001)
-    t(#B1100 NEQV  #B1010, #B0110)
+    t((#B1100 EQV #B1010) & #B11111, #B11001)
+    t(#B1100 NEQV #B1010, #B0110)
 
     t(NOT TRUE, FALSE)
     t(NOT FALSE, TRUE)
@@ -258,8 +265,7 @@ AND tester(x, y, z, v1, v2) BE
         failcount := failcount+1
     }
 
-L1: a := VALOF RESULTIS 11
-    t(a, 11)
+L1: a := 11
 
     //
     // Test simulated stack routines
@@ -278,7 +284,7 @@ L1: a := VALOF RESULTIS 11
         t(v1!1, -2)
     }
 
-    x := x + t(x,15, t(f, 105), t(a, 11)) - 15
+    x := x + t(x, 15, t(f, 105), t(a, 11)) - 15
     t(x, 15)
 
     x := x+1
@@ -376,23 +382,6 @@ L1: a := VALOF RESULTIS 11
     t1(1,2,3,4,5,6, 21)
     t1(t(1,1), t(2,2), t(3,3), t(4,4), t(5,5), t(6,6),
        t(21,21))
-    t1(VALOF RESULTIS 1,
-       VALOF RESULTIS 2,
-       VALOF RESULTIS 3,
-       VALOF RESULTIS 4,
-       VALOF RESULTIS 5,
-       VALOF RESULTIS 6,
-       21)
-    t1(VALOF RESULTIS 1,
-       t(2,2),
-       VALOF RESULTIS 3,
-       t(4,4),
-       VALOF RESULTIS 5,
-       t(6,6),
-       21)
-    t1( 1, t(2,2), VALOF RESULTIS 3,
-        4, t(5,5), VALOF RESULTIS 6,
-        21)
     t1(!v,v!0,v!200,!w,w!0,w!200, 2*1000+1200+2*10000+10200)
     (t1+(x+x)/x-2)(1,1,1,1,1,1,6)
     (!@t1)(1,2,3,4,5,6,21)

@@ -27,12 +27,12 @@ GLOBAL {
     putbyte      : 86
 }
 
-LET writes(s) BE
+LET writes(s)
 {
     FOR i = 1 TO getbyte(s, 0) DO wrch(getbyte(s, i))
 }
 
-AND start() BE
+LET start()
 {
     writes("Hello, World!*N ")
 }

@@ -128,7 +128,9 @@ LET t(x, y) = VALOF
 $(
     testno := testno + 1
     testcount := testcount + 1
-    IF x=y & quiet RESULTIS y
+    IF x=y & quiet
+        RESULTIS y
+
     writef("%I3 %I5 ", testno, y)
     TEST x=y THEN
         writes("OK*N")

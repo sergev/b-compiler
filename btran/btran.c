@@ -87,7 +87,6 @@ int *rdblockbody(void);
 #define S_STRING	3
 #define S_TRUE	        4
 #define S_FALSE	        5
-#define S_VALOF	        6
 #define S_LV	        7
 #define S_RV	        8
 #define S_VECAP	        9
@@ -121,7 +120,6 @@ int *rdblockbody(void);
 #define S_VECDEF	42
 #define S_CONSTDEF	43
 #define S_FNDEF	        44
-#define S_RTDEF	        45
 
 #define S_ASSIGN        50
 #define S_RTAP	        51
@@ -156,7 +154,6 @@ int *rdblockbody(void);
 /*
  * Other canonical symbols
  */
-#define S_BE	        89
 #define S_END	        90
 #define S_LSECT	        91
 #define S_RSECT	        92
@@ -270,7 +267,6 @@ int caset;
 int caseb;
 int *currentbranch;
 int breaklabel;
-int resultlabel;
 int defaultlabel;
 int endcaselabel;
 int looplabel;
@@ -320,8 +316,8 @@ void trnmessage(n)
     case 141: s = "TOO MANY CASES"; break;
     case 104: s = "ILLEGAL USE OF BREAK, LOOP OR RESULTIS"; break;
     case 101:
-    case 105: s = "ILLEGAL USE OF case OR DEFAULT"; break;
-    case 106: s = "TWO caseS WITH SAME CONSTANT"; break;
+    case 105: s = "ILLEGAL USE OF CASE OR DEFAULT"; break;
+    case 106: s = "TWO CASES WITH SAME CONSTANT"; break;
     case 144: s = "TOO MANY GLOBALS"; break;
     case 142: s = "NAME DECLARED TWICE"; break;
     case 143: s = "TOO MANY NAMES DECLARED"; break;
@@ -364,7 +360,7 @@ void plist(x, n, d)
     case S_FOR:
         size = size + 2;
 
-    case S_COND: case S_FNDEF: case S_RTDEF:
+    case S_COND: case S_FNDEF:
     case S_TEST: case S_CONSTDEF:
         size = size + 1;
 
@@ -381,7 +377,7 @@ void plist(x, n, d)
     case S_MANIFEST: case S_STATIC: case S_GLOBAL:
         size = size + 1;
 
-    case S_VALOF: case S_LV: case S_RV: case S_NEG: case S_NOT:
+    case S_LV: case S_RV: case S_NEG: case S_NOT:
     case S_TABLE: case S_GOTO: case S_RESULTIS: case S_REPEAT:
     case S_DEFAULT:
         size = size + 1;
@@ -674,7 +670,7 @@ void declnames(x)
             decldyn((int*) H2[x]);
             return;
 
-        case S_RTDEF: case S_FNDEF:
+        case S_FNDEF:
             H5[x] = nextparam();
             declstat((int*) H2[x], H5[x]);
             return;
@@ -885,18 +881,16 @@ void transstatdefs(x)
         transstatdefs((int*) H3[x]);
         return;
 
-    case S_FNDEF: case S_RTDEF: {
+    case S_FNDEF: {
         int a = dvece;
         int b = dvecs;
         int c = dvecp;
         int bl = breaklabel;
         int ll = looplabel;
-        int rl = resultlabel;
         int cb = caseb;
 
         breaklabel = -1;
         looplabel = -1;
-        resultlabel = -1;
         caseb = -1;
 
         compentry((int*) H2[x], H5[x]);
@@ -910,18 +904,12 @@ void transstatdefs(x)
 
         out2(S_SAVE, ssp);
 
-        if (H1[x] == S_FNDEF) {
-            load((int*) H4[x]);
-            out1(S_FNRN);
-        } else {
-            trans((int*) H4[x]);
-            out1(S_RTRN);
-        }
+        trans((int*) H4[x]);
+        out1(S_RTRN);
         out2(S_ENDPROC, 0);
 
         breaklabel = bl;
         looplabel = ll;
-        resultlabel = rl;
         caseb = cb;
         dvece = a;
         dvecs = b;
@@ -935,7 +923,7 @@ void transstatdefs(x)
 int statdefs(x)
     int *x;
 {
-    if (H1[x] == S_FNDEF || H1[x] == S_RTDEF)
+    if (H1[x] == S_FNDEF)
         return TRUE;
     if (H1[x] != S_AND)
         return FALSE;
@@ -1208,11 +1196,8 @@ next:
         return;
 
     case S_RESULTIS:
-        if (resultlabel < 0)
-            transreport(104, x);
         load((int*) H2[x]);
-        out2p(S_RES, resultlabel);
-        ssp = ssp - 1;
+        out1(S_FNRN);
         return;
 
     case S_WHILE:
@@ -1398,21 +1383,6 @@ void load(x)
          ssp = ssp + 1;
          return;
 
-    case S_VALOF: {
-        int rl = resultlabel;
-        int a = dvecs;
-        int b = dvece;
-        decllabels((int*) H2[x]);
-        resultlabel = nextparam();
-        trans((int*) H2[x]);
-        complab(resultlabel);
-        out2(S_RSTACK, ssp);
-        ssp = ssp + 1;
-        dvecs = a;
-        dvece = b;
-        resultlabel = rl;
-        return;
-    }
     case S_FNAP: {
         int s = ssp;
         ssp = ssp + savespacesize;
@@ -1569,7 +1539,6 @@ void compileae(x)
     endcaselabel = 0;
     defaultlabel = 0;
 
-    resultlabel = -1;
     breaklabel = -1;
     looplabel = -1;
 
@@ -1802,7 +1771,7 @@ next:
     switch (ch) {
     case '\n':
         linecount = linecount + 1;
-        nlpending = TRUE;           // ignorable characters
+        nlpending = TRUE;       // ignorable characters
     case '\v':
     case '\t':
     case ' ':
@@ -2346,10 +2315,6 @@ int *rbexp()
         checkfor(S_RPAREN, 15); // ')' missing
         return a;
 
-    case S_VALOF:
-        nextsymb();
-        return list2(S_VALOF, rcom());
-
     case S_VECAP:
         op = S_RV;
     case S_LV:
@@ -2525,29 +2490,22 @@ int *rdef()
         int *a = 0;
         nextsymb();
         if (H1[n] != S_NAME)
-            caereport(40);
+            caereport(40);      // name expected
         if (symb == S_NAME)
             a = rnamelist();
         checkfor(S_RPAREN, 41); // ')' missing
-
-        if (symb == S_BE) {
-            nextsymb();
-            return list5(S_RTDEF, n, a, rcom(), 0);
-        }
-        if (symb == S_EQ) {
-            nextsymb();
-            return list5(S_FNDEF, n, a, rexp(0), 0);
-        }
-        caereport(42);
+        if (symb != S_LSECT)
+            caereport(6);       // '{' expected
+        return list5(S_FNDEF, n, a, rcom(), 0);
     }
     default:
-        caereport(44);
+        caereport(44);          // '=' or '(' expected
     case S_EQ:
         nextsymb();
         if (symb == S_VEC) {
             nextsymb();
             if (H1[n] != S_NAME)
-                caereport(43);
+                caereport(43);  // name expected
             return list3(S_VECDEF, n, rexp(0));
         }
         return list3(S_VALDEF, n, rexplist());
@@ -2591,7 +2549,7 @@ recover:
     default:
         a = rdseq();
         if (symb != S_RSECT && symb != S_END)
-            caereport(51);
+            caereport(51);      // error in command
         break;
 
     case S_RSECT: case S_END:
@@ -2615,7 +2573,6 @@ void declsyswords()
 {
     d("AND", S_AND);
 
-    d("BE", S_BE);
     d("BREAK", S_BREAK);
     d("BY", S_BY);
 
@@ -2681,7 +2638,6 @@ void declsyswords()
     d("UNLESS", S_UNLESS);
 
     d("VEC", S_VEC);
-    d("VALOF", S_VALOF);
 
     d("WHILE", S_WHILE);
 
@@ -2691,7 +2647,7 @@ void declsyswords()
 
 int *formtree()
 {
-    int getbuf [10];             // FOR 'GET' STREAMS
+    int getbuf [10];            // for 'get' streams
     int wordbuf [100];
     int charbuf [256];
     int namebuf [100];
@@ -2730,7 +2686,7 @@ int *formtree()
 
 L:  nextsymb();
 
-    if (option[1]) {            // PP DEBUGGING OPTION
+    if (option[1]) {            // PP debugging option
         printf("%u %s\n", symb, (char*) wordv);
         if (symb == S_END)
             return 0;
@@ -2739,7 +2695,7 @@ L:  nextsymb();
 
     a = rdblockbody();
     if (symb != S_END) {
-        caereport(99);
+        caereport(99);          // incorrect termination
         goto L;
     }
     return a;

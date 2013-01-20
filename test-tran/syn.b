@@ -13,7 +13,33 @@ GLOBAL {
     SAVESPACESIZE:282
 }
 
-LET start(PARM) BE
+LET COMP(V, TREEMAX)
+{
+    LET B = VEC 63
+    CHBUF := B
+    {
+        TREEP, TREEVEC := V+TREEMAX, V
+        {
+            LET A = FORMTREE()
+            IF A=0 BREAK
+
+            writef("*NTREE SIZE %N*N", TREEMAX+TREEVEC-TREEP)
+
+            IF OPTION!2 DO { writes('AE TREE*N')
+                             PLIST(A, 0, 20)
+                             newline()  }
+
+            UNLESS REPORTCOUNT=0 DO stop(8)
+
+            UNLESS OPTION!3 DO
+                  { selectoutput(OCODE)
+                     COMPILEAE(A)
+                     selectoutput(SYSPRINT)  }
+        }
+    } REPEAT
+}
+
+LET start(PARM)
 {
 SYSIN := input()
 SYSPRINT := output()
@@ -69,31 +95,7 @@ selectinput(SOURCESTREAM)
 OCODE := findoutput("OCODE")
 IF OCODE=0 DO OCODE := SYSPRINT
 
-{   LET COMP(V, TREEMAX) BE
-    {   LET B = VEC 63
-        CHBUF := B
-
-      {  TREEP, TREEVEC := V+TREEMAX, V
-
-        {  LET A = FORMTREE()
-           IF A=0 BREAK
-
-           writef("*NTREE SIZE %N*N", TREEMAX+TREEVEC-TREEP)
-
-           IF OPTION!2 DO { writes('AE TREE*N')
-                             PLIST(A, 0, 20)
-                             newline()  }
-
-
-           UNLESS REPORTCOUNT=0 DO stop(8)
-
-           UNLESS OPTION!3 DO
-                  { selectoutput(OCODE)
-                     COMPILEAE(A)
-                     selectoutput(SYSPRINT)  }
-        }
-      } REPEAT
-    }
+{
 
    aptovec(COMP, TREESIZE)
 
@@ -110,14 +112,14 @@ IF OCODE=0 DO OCODE := SYSPRINT
 
 GET "SYNHDR"
 
-LET NEXTSYMB() BE
-{     NLPENDING := FALSE
+LET NEXTSYMB()
+{
+    NLPENDING := FALSE
+NEXT:
+    IF PPTRACE DO wrch(CH)
 
-NEXT: IF PPTRACE DO wrch(CH)
-
-    SWITCHON CH INTO
-
-    { CASE '*P':
+    SWITCHON CH INTO {
+       CASE '*P':
        CASE '*N': LINECOUNT := LINECOUNT + 1
                   NLPENDING := TRUE  // IGNORABLE CHARACTERS
        CASE '*T':
@@ -291,8 +293,9 @@ NEXT: IF PPTRACE DO wrch(CH)
        L: RCH()   }
 }
 
-AND readnumber(RADIX) BE
-    { LET D = VALUE(CH)
+AND readnumber(RADIX)
+{
+       LET D = VALUE(CH)
        DECVAL := D
        IF D>=RADIX DO CAEREPORT(33)
 
@@ -300,13 +303,14 @@ AND readnumber(RADIX) BE
           D := VALUE(CH)
           IF D>=RADIX RETURN
           DECVAL := RADIX*DECVAL + D  } REPEAT
-    }
+}
 
-
-AND VALUE(CH) = '0'<=CH<='9' -> CH-'0',
-                'A'<=CH<='F' -> CH-'A'+10,
-                100
-
+AND VALUE(CH)
+{
+    RESULTIS '0'<=CH<='9' -> CH-'0',
+             'A'<=CH<='F' -> CH-'A'+10,
+                             100
+}
 .
 
 //    LEX2
@@ -314,89 +318,94 @@ AND VALUE(CH) = '0'<=CH<='9' -> CH-'0',
 
 GET "SYNHDR"
 
-LET D(S, ITEM) BE { unpackstring(S, CHARV)
-                     WORDSIZE := packstring(CHARV, WORDV)
-                     LOOKUPWORD()
-                     WORDNODE!0 := ITEM  }
+LET D(S, ITEM)
+{
+    unpackstring(S, CHARV)
+    WORDSIZE := packstring(CHARV, WORDV)
+    LOOKUPWORD()
+    WORDNODE!0 := ITEM
+}
 
-AND DECLSYSWORDS() BE
-     { D("AND", S.AND)
+AND DECLSYSWORDS()
+{
+    D("AND", S.AND)
 
-        D("BE", S.BE)
-        D("BREAK", S.BREAK)
-        D("BY", S.BY)
+    D("BE", S.BE)
+    D("BREAK", S.BREAK)
+    D("BY", S.BY)
 
-        D("CASE", S.CASE)
+    D("CASE", S.CASE)
 
-        D("DO", S.DO)
-        D("DEFAULT", S.DEFAULT)
+    D("DO", S.DO)
+    D("DEFAULT", S.DEFAULT)
 
-        D("EQ", S.EQ)
-        D("EQV", S.EQV)
-        D("ELSE", S.OR)
-        D("ENDCASE", S.ENDCASE)
+    D("EQ", S.EQ)
+    D("EQV", S.EQV)
+    D("ELSE", S.OR)
+    D("ENDCASE", S.ENDCASE)
 
-        D("FALSE", S.FALSE)
-        D("FOR", S.FOR)
-        D("FINISH", S.FINISH)
+    D("FALSE", S.FALSE)
+    D("FOR", S.FOR)
+    D("FINISH", S.FINISH)
 
-        D("GOTO", S.GOTO)
-        D("GE", S.GE)
-        D("GR", S.GR)
-        D("GLOBAL", S.GLOBAL)
-        D("GET", S.GET)
+    D("GOTO", S.GOTO)
+    D("GE", S.GE)
+    D("GR", S.GR)
+    D("GLOBAL", S.GLOBAL)
+    D("GET", S.GET)
 
-        D("IF", S.IF)
-        D("INTO", S.INTO)
+    D("IF", S.IF)
+    D("INTO", S.INTO)
 
-        D("LET", S.LET)
-        D("LV", S.LV)
-        D("LE", S.LE)
-        D("LS", S.LS)
-        D("LOGOR", S.LOGOR)
-        D("LOGAND", S.LOGAND)
-        D("LOOP", S.LOOP)
-        D("LSHIFT", S.LSHIFT)
+    D("LET", S.LET)
+    D("LV", S.LV)
+    D("LE", S.LE)
+    D("LS", S.LS)
+    D("LOGOR", S.LOGOR)
+    D("LOGAND", S.LOGAND)
+    D("LOOP", S.LOOP)
+    D("LSHIFT", S.LSHIFT)
 
-        D("MANIFEST", S.MANIFEST)
+    D("MANIFEST", S.MANIFEST)
 
-        D("NE", S.NE)
-        D("NOT", S.NOT)
-        D("NEQV", S.NEQV)
+    D("NE", S.NE)
+    D("NOT", S.NOT)
+    D("NEQV", S.NEQV)
 
-        D("OR", S.OR)
+    D("OR", S.OR)
 
-        D("RESULTIS", S.RESULTIS)
-        D("RETURN", S.RETURN)
-        D("REM", S.REM)
-        D("RSHIFT", S.RSHIFT)
-        D("RV", S.RV)
-        D("REPEAT", S.REPEAT)
-        D("REPEATWHILE", S.REPEATWHILE)
-        D("REPEATUNTIL", S.REPEATUNTIL)
+    D("RESULTIS", S.RESULTIS)
+    D("RETURN", S.RETURN)
+    D("REM", S.REM)
+    D("RSHIFT", S.RSHIFT)
+    D("RV", S.RV)
+    D("REPEAT", S.REPEAT)
+    D("REPEATWHILE", S.REPEATWHILE)
+    D("REPEATUNTIL", S.REPEATUNTIL)
 
-        D("SWITCHON", S.SWITCHON)
-        D("STATIC", S.STATIC)
+    D("SWITCHON", S.SWITCHON)
+    D("STATIC", S.STATIC)
 
-        D("TO", S.TO)
-        D("TEST", S.TEST)
-        D("TRUE", S.TRUE)
-        D("THEN", S.DO)
-        D("TABLE", S.TABLE)
+    D("TO", S.TO)
+    D("TEST", S.TEST)
+    D("TRUE", S.TRUE)
+    D("THEN", S.DO)
+    D("TABLE", S.TABLE)
 
-        D("UNTIL", S.UNTIL)
-        D("UNLESS", S.UNLESS)
+    D("UNTIL", S.UNTIL)
+    D("UNLESS", S.UNLESS)
 
-        D("VEC", S.VEC)
-        D("VALOF", S.VALOF)
+    D("VEC", S.VEC)
+    D("VALOF", S.VALOF)
 
-        D("WHILE", S.WHILE)
+    D("WHILE", S.WHILE)
 
-        D("$", 0); NULLTAG := WORDNODE  }
+    D("$", 0); NULLTAG := WORDNODE
+}
 
-AND LOOKUPWORD() = VALOF
-
-{       LET HASHVAL = (WORDV!0+WORDV!WORDSIZE >> 1) REM NAMETABLESIZE
+AND LOOKUPWORD()
+{
+        LET HASHVAL = (WORDV!0+WORDV!WORDSIZE >> 1) REM NAMETABLESIZE
         LET M = @NAMETABLE!HASHVAL
 
   NEXT: WORDNODE := !M
@@ -421,8 +430,9 @@ AND LOOKUPWORD() = VALOF
 
 GET "SYNHDR"
 
-LET RCH() BE
-    { CH := rdch()
+LET RCH()
+{
+       CH := rdch()
 
        IF PRSOURCE DO IF GETP=0 /\ CH NE ENDSTREAMCH DO
           { UNLESS LINECOUNT=PRLINE DO { writef("%I4  ", LINECOUNT)
@@ -430,18 +440,21 @@ LET RCH() BE
              wrch(CH)  }
 
        CHCOUNT := CHCOUNT + 1
-       CHBUF!(CHCOUNT&63) := CH  }
+       CHBUF!(CHCOUNT&63) := CH
+}
 
-AND wrchbuf() BE
-    { writes("*N...")
+AND wrchbuf()
+{
+       writes("*N...")
        FOR P = CHCOUNT-63 TO CHCOUNT DO
                 { LET K = CHBUF!(P&63)
                    UNLESS K=0 DO wrch(K)  }
-       newline()  }
+       newline()
+}
 
-
-AND RDTAG(X) BE
-    { CHARP, CHARV!1 := 1, X
+AND RDTAG(X)
+{
+        CHARP, CHARV!1 := 1, X
 
         {  RCH()
             UNLESS 'A'<=CH<='Z' \/
@@ -451,12 +464,13 @@ AND RDTAG(X) BE
             CHARP := CHARP+1
             CHARV!CHARP := CH  } REPEAT
 
-       CHARV!0 := CHARP
-       WORDSIZE := packstring(CHARV, WORDV)  }
+        CHARV!0 := CHARP
+        WORDSIZE := packstring(CHARV, WORDV)
+}
 
-
-AND PERFORMGET() BE
-    { NEXTSYMB()
+AND PERFORMGET()
+{
+       NEXTSYMB()
        UNLESS SYMB=S.STRING THEN CAEREPORT(97)
 
        IF OPTION!5 RETURN
@@ -471,18 +485,22 @@ AND PERFORMGET() BE
            SOURCESTREAM := findlibinput(WORDV)
        IF SOURCESTREAM=0 THEN CAEREPORT(96,WORDV)
        selectinput(SOURCESTREAM)
-       RCH()   }
+       RCH()
+}
 
-AND APPEND(D, S) BE
-    { LET ND = getbyte(D, 0)
+AND APPEND(D, S)
+{
+       LET ND = getbyte(D, 0)
        AND NS = getbyte(S, 0)
        FOR I = 1 TO NS DO {
            ND := ND + 1
            putbyte(D, ND, getbyte(S, I)) }
-       putbyte(D, 0, ND) }
+       putbyte(D, 0, ND)
+}
 
-AND findlibinput(NAME) = VALOF
-    { LET PATH = VEC 64
+AND findlibinput(NAME)
+{
+       LET PATH = VEC 64
        AND DIR = "/usr/lib/bcpl/"
        TEST getbyte(DIR, 0) + getbyte(NAME, 0) > 255
        THEN RESULTIS 0
@@ -490,9 +508,7 @@ AND findlibinput(NAME) = VALOF
                APPEND(PATH, DIR)
                APPEND(PATH, NAME)
                RESULTIS findinput(PATH) }
-    }
-
-
+}
 .
 
 //    CAE0
@@ -500,45 +516,60 @@ AND findlibinput(NAME) = VALOF
 
 GET "SYNHDR"
 
-LET NEWVEC(N) = VALOF
-    { TREEP := TREEP - N - 1
+LET NEWVEC(N)
+{
+       TREEP := TREEP - N - 1
        IF TREEP<=TREEVEC DO
                 { REPORTMAX := 0
                    CAEREPORT(98)  }
-        RESULTIS TREEP  }
+        RESULTIS TREEP
+}
 
-AND LIST1(X) = VALOF
-    { LET P = NEWVEC(0)
+AND LIST1(X)
+{
+       LET P = NEWVEC(0)
        P!0 := X
-       RESULTIS P  }
+       RESULTIS P
+}
 
-AND LIST2(X, Y) = VALOF
-     { LET P = NEWVEC(1)
+AND LIST2(X, Y)
+{
+        LET P = NEWVEC(1)
         P!0, P!1 := X, Y
-        RESULTIS P   }
+        RESULTIS P
+}
 
-AND LIST3(X, Y, Z) = VALOF
-     { LET P = NEWVEC(2)
+AND LIST3(X, Y, Z)
+{
+        LET P = NEWVEC(2)
         P!0, P!1, P!2 := X, Y, Z
-        RESULTIS P     }
+        RESULTIS P
+}
 
-AND LIST4(X, Y, Z, T) = VALOF
-     { LET P = NEWVEC(3)
+AND LIST4(X, Y, Z, T)
+{
+        LET P = NEWVEC(3)
         P!0, P!1, P!2, P!3 := X, Y, Z, T
-        RESULTIS P   }
+        RESULTIS P
+}
 
-AND LIST5(X, Y, Z, T, U) = VALOF
-     { LET P = NEWVEC(4)
+AND LIST5(X, Y, Z, T, U)
+{
+        LET P = NEWVEC(4)
         P!0, P!1, P!2, P!3, P!4 := X, Y, Z, T, U
-        RESULTIS P   }
+        RESULTIS P
+}
 
-AND LIST6(X, Y, Z, T, U, V) = VALOF
-     { LET P = NEWVEC(5)
+AND LIST6(X, Y, Z, T, U, V)
+{
+        LET P = NEWVEC(5)
         P!0, P!1, P!2, P!3, P!4, P!5 := X, Y, Z, T, U, V
-        RESULTIS P  }
+        RESULTIS P
+}
 
-AND CAEREPORT(N, A) BE
-     { REPORTCOUNT := REPORTCOUNT + 1
+AND CAEREPORT(N, A)
+{
+        REPORTCOUNT := REPORTCOUNT + 1
         writef("*NSYNTAX ERROR NEAR LINE %N:  ", LINECOUNT)
         CAEMESSAGE(N, A)
         wrchbuf()
@@ -550,11 +581,13 @@ AND CAEREPORT(N, A) BE
         UNTIL SYMB=S.LSECT \/ SYMB=S.RSECT \/
               SYMB=S.LET \/ SYMB=S.AND \/
               SYMB=S.END \/ NLPENDING DO NEXTSYMB()
-        longjump(REC.P, REC.L)   }
+        longjump(REC.P, REC.L)
+}
 
-AND FORMTREE() =  VALOF
-    {   CHCOUNT := 0
-        FOR I = 0 TO 63 DO CHBUF!I := 0
+AND FORMTREE()
+{
+    CHCOUNT := 0
+    FOR I = 0 TO 63 DO CHBUF!I := 0
 
      { LET V = VEC 10   // FOR 'GET' STREAMS
         GETV, GETP, GETT := V, 0, 10
@@ -592,46 +625,44 @@ AND FORMTREE() =  VALOF
 
 
 
-AND CAEMESSAGE(N, A) BE
-    { LET S = VALOF
+AND CAEMESSAGE(n, a)
+{
+    LET s = 0;
 
-         SWITCHON N INTO
+    SWITCHON N INTO {
+        DEFAULT:  writen(n); RETURN
 
-         { DEFAULT:  writen(N); RETURN
+        CASE 91: s = "'8'  '(' OR ')' EXPECTED"; ENDCASE
+        CASE 94: s = "ILLEGAL CHARACTER"; ENDCASE
+        CASE 95: s = "STRING TOO LONG"; ENDCASE
+        CASE 96: s = "NO INPUT %S"; ENDCASE
+        CASE 97: s = "STRING OR NUMBER EXPECTED"; ENDCASE
+        CASE 98: s = "PROGRAM TOO LARGE"; ENDCASE
+        CASE 99: s = "INCORRECT TERMINATION"; ENDCASE
 
-            CASE 91: RESULTIS "'8'  '(' OR ')' EXPECTED"
-            CASE 94: RESULTIS "ILLEGAL CHARACTER"
-            CASE 95: RESULTIS "STRING TOO LONG"
-            CASE 96: RESULTIS "NO INPUT %S"
-            CASE 97: RESULTIS "STRING OR NUMBER EXPECTED"
-            CASE 98: RESULTIS "PROGRAM TOO LARGE"
-            CASE 99: RESULTIS "INCORRECT TERMINATION"
-
-            CASE 8:CASE 40:CASE 43:
-                     RESULTIS "NAME EXPECTED"
-            CASE 6: RESULTIS "'{' EXPECTED"
-            CASE 7: RESULTIS "'}' EXPECTED"
-            CASE 9: RESULTIS "UNTAGGED '}' MISMATCH"
-            CASE 32: RESULTIS "ERROR IN EXPRESSION"
-            CASE 33: RESULTIS "ERROR IN NUMBER"
-            CASE 34: RESULTIS "BAD STRING"
-            CASE 15:CASE 19:CASE 41: RESULTIS "')' MISSING"
-            CASE 30: RESULTIS "',' MISSING"
-            CASE 42: RESULTIS "'=' OR 'BE' EXPECTED"
-            CASE 44: RESULTIS "'=' OR '(' EXPECTED"
-            CASE 50: RESULTIS "ERROR IN LABEL"
-            CASE 51: RESULTIS "ERROR IN COMMAND"
-            CASE 54: RESULTIS "'OR' EXPECTED"
-            CASE 57: RESULTIS "'=' EXPECTED"
-            CASE 58: RESULTIS "'TO' EXPECTED"
-            CASE 60: RESULTIS "'INTO' EXPECTED"
-            CASE 61:CASE 62: RESULTIS "':' EXPECTED"
-            CASE 63: RESULTIS "'**/' MISSING"
-                       }
-
-         writef(S, A)  }
-
-
+        CASE 8:CASE 40:CASE 43:
+                 s = "NAME EXPECTED"; ENDCASE
+        CASE 6: s = "'{' EXPECTED"; ENDCASE
+        CASE 7: s = "'}' EXPECTED"; ENDCASE
+        CASE 9: s = "UNTAGGED '}' MISMATCH"; ENDCASE
+        CASE 32: s = "ERROR IN EXPRESSION"; ENDCASE
+        CASE 33: s = "ERROR IN NUMBER"; ENDCASE
+        CASE 34: s = "BAD STRING"; ENDCASE
+        CASE 15:CASE 19:CASE 41: s = "')' MISSING"; ENDCASE
+        CASE 30: s = "',' MISSING"; ENDCASE
+        CASE 42: s = "'=' OR 'BE' EXPECTED"; ENDCASE
+        CASE 44: s = "'=' OR '(' EXPECTED"; ENDCASE
+        CASE 50: s = "ERROR IN LABEL"; ENDCASE
+        CASE 51: s = "ERROR IN COMMAND"; ENDCASE
+        CASE 54: s = "'OR' EXPECTED"; ENDCASE
+        CASE 57: s = "'=' EXPECTED"; ENDCASE
+        CASE 58: s = "'TO' EXPECTED"; ENDCASE
+        CASE 60: s = "'INTO' EXPECTED"; ENDCASE
+        CASE 61:CASE 62: s = "':' EXPECTED"; ENDCASE
+        CASE 63: s = "'**/' MISSING"; ENDCASE
+    }
+    writef(s, a)
+}
 .
 
 //    CAE1
@@ -639,16 +670,17 @@ AND CAEMESSAGE(N, A) BE
 
 GET "SYNHDR"
 
-LET RDBLOCKBODY() = VALOF
-    {   LET P, L = REC.P, REC.L
-        LET A = 0
+LET RDBLOCKBODY()
+{
+    LET P, L = REC.P, REC.L
+    LET A = 0
 
-        REC.P, REC.L := level(), RECOVER
+    REC.P, REC.L := level(), RECOVER
 
-        IGNORE(S.SEMICOLON)
+    IGNORE(S.SEMICOLON)
 
-        SWITCHON SYMB INTO
-     { CASE S.MANIFEST:
+    SWITCHON SYMB INTO {
+        CASE S.MANIFEST:
         CASE S.STATIC:
         CASE S.GLOBAL:
             {  LET OP = SYMB
@@ -676,16 +708,18 @@ LET RDBLOCKBODY() = VALOF
                RESULTIS A   }
 }
 
-AND RDSEQ() = VALOF
-    { LET A = 0
+AND RDSEQ()
+{
+       LET A = 0
        IGNORE(S.SEMICOLON)
        A := RCOM()
        IF SYMB=S.RSECT \/ SYMB=S.END RESULTIS A
-       RESULTIS LIST3(S.SEQ, A, RDSEQ())   }
+       RESULTIS LIST3(S.SEQ, A, RDSEQ())
+}
 
-
-AND RDCDEFS() = VALOF
-    {   LET A, B = 0, 0
+AND RDCDEFS()
+{
+        LET A, B = 0, 0
         LET PTR = @A
         LET P, L = REC.P, REC.L
         REC.P, REC.L := level(), RECOVER
@@ -698,10 +732,12 @@ AND RDCDEFS() = VALOF
   RECOVER: IGNORE(S.SEMICOLON) } REPEATWHILE SYMB=S.NAME
 
         REC.P, REC.L := P, L
-        RESULTIS A  }
+        RESULTIS A
+}
 
-AND RDSECT(R) = VALOF
-    {  LET TAG, A = WORDNODE, 0
+AND RDSECT(R)
+{
+        LET TAG, A = WORDNODE, 0
         CHECKFOR(S.LSECT, 6)
         A := R()
         UNLESS SYMB=S.RSECT DO CAEREPORT(7)
@@ -710,39 +746,46 @@ AND RDSECT(R) = VALOF
                OR IF WORDNODE=NULLTAG DO
                       { SYMB := 0
                          CAEREPORT(9)  }
-        RESULTIS A   }
+        RESULTIS A
+}
 
-
-AND RNAMELIST() = VALOF
-    {  LET A = RNAME()
+AND RNAMELIST()
+{
+        LET A = RNAME()
         UNLESS SYMB=S.COMMA RESULTIS A
         NEXTSYMB()
-        RESULTIS LIST3(S.COMMA, A, RNAMELIST())   }
+        RESULTIS LIST3(S.COMMA, A, RNAMELIST())
+}
 
-
-AND RNAME() = VALOF
-    { LET A = WORDNODE
+AND RNAME()
+{
+       LET A = WORDNODE
        CHECKFOR(S.NAME, 8)
-       RESULTIS A  }
+       RESULTIS A
+}
 
-AND IGNORE(ITEM) BE IF SYMB=ITEM DO NEXTSYMB()
+AND IGNORE(ITEM)
+{
+    IF SYMB=ITEM DO NEXTSYMB()
+}
 
-AND CHECKFOR(ITEM, N) BE
-      { UNLESS SYMB=ITEM DO CAEREPORT(N)
-         NEXTSYMB()  }
-
+AND CHECKFOR(ITEM, N)
+{
+    UNLESS SYMB=ITEM DO CAEREPORT(N)
+    NEXTSYMB()
+}
 .
 
 //    CAE2
 
-
 GET "SYNHDR"
-LET RBEXP() = VALOF
-  {     LET A, OP = 0, SYMB
 
-        SWITCHON SYMB INTO
+LET RBEXP()
+{
+    LET A, OP = 0, SYMB
 
-    {  DEFAULT:
+    SWITCHON SYMB INTO {
+        DEFAULT:
             CAEREPORT(32)
 
         CASE S.QUERY:
@@ -796,13 +839,13 @@ LET RBEXP() = VALOF
                       RESULTIS LIST2(S.TABLE, REXPLIST())   }
 }
 
+AND REXP(N)
+{
+    LET A = RBEXP()
 
-AND REXP(N) = VALOF
-    {   LET A = RBEXP()
+    LET B, C, P, Q = 0, 0, 0, 0
 
-        LET B, C, P, Q = 0, 0, 0, 0
-
-  L: { LET OP = SYMB
+ L: {   LET OP = SYMB
 
         IF NLPENDING RESULTIS A
 
@@ -859,10 +902,11 @@ AND REXP(N) = VALOF
                 NEXTSYMB()
                 A := LIST3(OP, A, REXP(Q))
                 GOTO L                     }     }
-    }
+}
 
-LET REXPLIST() = VALOF
-    {   LET A = 0
+LET REXPLIST()
+{
+        LET A = 0
         LET PTR = @A
 
      { LET B = REXP(0)
@@ -871,14 +915,14 @@ LET REXPLIST() = VALOF
         NEXTSYMB()
         !PTR := LIST3(S.COMMA, B, 0)
         PTR := @H3!(!PTR)  } REPEAT
-    }
+}
 
-LET RDEF() = VALOF
-    {   LET N = RNAMELIST()
+LET RDEF()
+{
+    LET N = RNAMELIST()
 
-        SWITCHON SYMB INTO
-
-     { CASE S.LPAREN:
+    SWITCHON SYMB INTO {
+        CASE S.LPAREN:
              { LET A = 0
                 NEXTSYMB()
                 UNLESS H1!N=S.NAME DO CAEREPORT(40)
@@ -907,18 +951,16 @@ LET RDEF() = VALOF
 }
 .
 
-
 //    CAE4
-
-
 
 GET "SYNHDR"
 
-LET RBCOM() = VALOF
-   {   LET A, B, OP = 0, 0, SYMB
+LET RBCOM()
+{
+    LET A, B, OP = 0, 0, SYMB
 
-        SWITCHON SYMB INTO
-     { DEFAULT: RESULTIS 0
+    SWITCHON SYMB INTO {
+        DEFAULT: RESULTIS 0
 
         CASE S.NAME:CASE S.NUMBER:CASE S.STRING:
         CASE S.TRUE:CASE S.FALSE:CASE S.LV:CASE S.RV:CASE S.VECAP:
@@ -1001,8 +1043,9 @@ LET RBCOM() = VALOF
                 RESULTIS RDSECT(RDBLOCKBODY)   }
 }
 
-AND RCOM() = VALOF
-    {   LET A = RBCOM()
+AND RCOM()
+{
+        LET A = RBCOM()
 
         IF A=0 DO CAEREPORT(51)
 
@@ -1014,17 +1057,17 @@ AND RCOM() = VALOF
                          THEN A := LIST2(OP, A)
                            OR A := LIST3(OP, A, REXP(0))   }
 
-        RESULTIS A  }
-
+        RESULTIS A
+}
 .
 
 //    PLIST
 
-
 GET "SYNHDR"
 
-LET PLIST(X, N, D) BE
-    {   LET SIZE = 0
+LET PLIST(X, N, D)
+{
+        LET SIZE = 0
         LET V = TABLE 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 
         IF X=0 DO { writes("NIL"); RETURN  }
