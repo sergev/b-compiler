@@ -2,12 +2,15 @@
 
 GET "TRNHDR"
 
-LET NEXTPARAM() = VALOF
-    { PARAMNUMBER := PARAMNUMBER + 1
-       RESULTIS PARAMNUMBER  }
+LET NEXTPARAM()
+{
+    PARAMNUMBER := PARAMNUMBER + 1
+    RESULTIS PARAMNUMBER
+}
 
-AND TRANSREPORT(N, X) BE
-    { selectoutput(SYSPRINT)
+AND TRANSREPORT(N, X)
+{
+       selectoutput(SYSPRINT)
        REPORTCOUNT := REPORTCOUNT + 1
        IF REPORTCOUNT GE REPORTMAX DO
                 { writes("*NCOMPILATION ABORTED*N")
@@ -15,37 +18,39 @@ AND TRANSREPORT(N, X) BE
        writes("*NREPORT:   "); TRNMESSAGE(N)
        writef("*NCOMMANDS COMPILED %N*N", COMCOUNT)
        PLIST(X, 0, 4); newline()
-       selectoutput(OCODE)  }
+       selectoutput(OCODE)
+}
 
-AND TRNMESSAGE(N) BE
-{ LET S = VALOF
-    SWITCHON N INTO
+AND TRNMESSAGE(N)
+{
+    LET S = 0
 
-    { DEFAULT: writef("COMPILER ERROR  %N", N); RETURN
+    SWITCHON N INTO {
+        DEFAULT: writef("COMPILER ERROR  %N", N); RETURN
 
-       CASE 141: RESULTIS "TOO MANY CASES"
-       CASE 104: RESULTIS "ILLEGAL USE OF BREAK, LOOP OR RESULTIS"
-       CASE 101:
-       CASE 105: RESULTIS "ILLEGAL USE OF CASE OR DEFAULT"
-       CASE 106: RESULTIS "TWO CASES WITH SAME CONSTANT"
-       CASE 144: RESULTIS "TOO MANY GLOBALS"
-       CASE 142: RESULTIS "NAME DECLARED TWICE"
-       CASE 143: RESULTIS "TOO MANY NAMES DECLARED"
-       CASE 115: RESULTIS "NAME NOT DECLARED"
-       CASE 116: RESULTIS "DYNAMIC FREE VARIABLE USED"
-       CASE 117:CASE 118:CASE 119:
-                 RESULTIS "ERROR IN CONSTANT EXPRESSION"
-       CASE 110:CASE 112:
-                 RESULTIS "LHS AND RHS DO NOT MATCH"
-       CASE 109:CASE 113:
-                 RESULTIS "LTYPE EXPRESSION EXPECTED"
-                   }
+        CASE 141: S := "TOO MANY CASES"; ENDCASE
+        CASE 104: S := "ILLEGAL USE OF BREAK, LOOP OR RESULTIS"; ENDCASE
+        CASE 101:
+        CASE 105: S := "ILLEGAL USE OF CASE OR DEFAULT"; ENDCASE
+        CASE 106: S := "TWO CASES WITH SAME CONSTANT"; ENDCASE
+        CASE 144: S := "TOO MANY GLOBALS"; ENDCASE
+        CASE 142: S := "NAME DECLARED TWICE"; ENDCASE
+        CASE 143: S := "TOO MANY NAMES DECLARED"; ENDCASE
+        CASE 115: S := "NAME NOT DECLARED"; ENDCASE
+        CASE 116: S := "DYNAMIC FREE VARIABLE USED"; ENDCASE
+        CASE 117: CASE 118: CASE 119:
+                  S := "ERROR IN CONSTANT EXPRESSION"; ENDCASE
+        CASE 110: CASE 112:
+                  S := "LHS AND RHS DO NOT MATCH"; ENDCASE
+        CASE 109: CASE 113:
+                  S := "LTYPE EXPRESSION EXPECTED"; ENDCASE
+    }
+    writes(S)
+}
 
-   writes(S)   }
-
-
-LET COMPILEAE(X) BE
-   {   LET A = VEC 1200
+LET COMPILEAE(X)
+{
+       LET A = VEC 1200
        LET D = VEC 100
        LET K = VEC 150
        LET L = VEC 150
@@ -86,8 +91,8 @@ LET COMPILEAE(X) BE
 
 GET "TRNHDR"
 
-LET TRANS(X) BE
-  {
+LET TRANS(X)
+{
 NEXT:
  { LET SW = FALSE
     IF X=0 RETURN
@@ -288,9 +293,10 @@ NEXT:
 
 GET "TRNHDR"
 
-LET DECLNAMES(X) BE UNLESS X=0 SWITCHON H1!X INTO
-
-     {  DEFAULT: TRANSREPORT(102, CURRENTBRANCH)
+LET DECLNAMES(X)
+{
+    UNLESS X=0 SWITCHON H1!X INTO {
+         DEFAULT: TRANSREPORT(102, CURRENTBRANCH)
                   RETURN
 
          CASE S.VECDEF: CASE S.VALDEF:
@@ -305,11 +311,13 @@ LET DECLNAMES(X) BE UNLESS X=0 SWITCHON H1!X INTO
          CASE S.AND:
                DECLNAMES(H2!X)
                DECLNAMES(H3!X)
-               RETURN    }
+               RETURN
+    }
+}
 
-
-AND DECLDYN(X) BE UNLESS X=0 DO
-
+AND DECLDYN(X)
+{
+    UNLESS X=0 DO
     { IF H1!X=S.NAME DO
           { ADDNAME(X, S.LOCAL, SSP)
              SSP := SSP + 1
@@ -322,9 +330,11 @@ AND DECLDYN(X) BE UNLESS X=0 DO
              RETURN  }
 
        TRANSREPORT(103, X)   }
+}
 
-AND DECLSTAT(X, L) BE
-    {  LET T = CELLWITHNAME(X)
+AND DECLSTAT(X, L)
+{
+    LET T = CELLWITHNAME(X)
 
        IF DVEC!(T+1)=S.GLOBAL DO
           { LET N = DVEC!(T+2)
@@ -342,14 +352,16 @@ AND DECLSTAT(X, L) BE
        OUT2P(S.ITEML, L)    }
 }
 
-AND DECLLABELS(X) BE
-    { LET B = DVECS
+AND DECLLABELS(X)
+{
+       LET B = DVECS
        SCANLABELS(X)
        CHECKDISTINCT(B, DVECS)
-       DVECE := DVECS   }
+       DVECE := DVECS
+}
 
-
-AND CHECKDISTINCT(E, S) BE
+AND CHECKDISTINCT(E, S)
+{
        UNTIL E=S DO
           { LET P = E + 3
              AND N = DVEC!E
@@ -357,23 +369,27 @@ AND CHECKDISTINCT(E, S) BE
                 { IF DVEC!P=N DO TRANSREPORT(142, N)
                    P := P + 3  }
              E := E + 3  }
+}
 
+AND ADDNAME(N, P, A)
+{
+    IF DVECS>=DVECT DO TRANSREPORT(143, CURRENTBRANCH)
+    DVEC!DVECS, DVEC!(DVECS+1), DVEC!(DVECS+2) := N, P, A
+    DVECS := DVECS + 3
+}
 
-AND ADDNAME(N, P, A) BE
-    { IF DVECS>=DVECT DO TRANSREPORT(143, CURRENTBRANCH)
-       DVEC!DVECS, DVEC!(DVECS+1), DVEC!(DVECS+2) := N, P, A
-       DVECS := DVECS + 3  }
+AND CELLWITHNAME(N)
+{
+    LET X = DVECE
 
+    X := X - 3 REPEATUNTIL X=0 \/ DVEC!X=N
 
-AND CELLWITHNAME(N) = VALOF
-    { LET X = DVECE
+    RESULTIS X
+}
 
-       X := X - 3 REPEATUNTIL X=0 \/ DVEC!X=N
-
-       RESULTIS X  }
-
-
-AND SCANLABELS(X) BE UNLESS X=0 SWITCHON H1!X INTO
+AND SCANLABELS(X)
+{
+    UNLESS X=0 SWITCHON H1!X INTO
 
     { DEFAULT: RETURN
 
@@ -398,10 +414,11 @@ AND SCANLABELS(X) BE UNLESS X=0 SWITCHON H1!X INTO
             SCANLABELS(H3!X)
             SCANLABELS(H4!X)
             RETURN    }
+}
 
-
-AND TRANSDEF(X) BE
-    {   TRANSDYNDEFS(X)
+AND TRANSDEF(X)
+{
+        TRANSDYNDEFS(X)
         IF STATDEFS(X) DO
            { LET L, S= NEXTPARAM(), SSP
               COMPJUMP(L)
@@ -411,9 +428,10 @@ AND TRANSDEF(X) BE
               COMPLAB(L)  }
 }
 
-AND TRANSDYNDEFS(X) BE
-        SWITCHON H1!X INTO
-     { CASE S.AND:
+AND TRANSDYNDEFS(X)
+{
+    SWITCHON H1!X INTO {
+        CASE S.AND:
             TRANSDYNDEFS(H2!X)
             TRANSDYNDEFS(H3!X)
             RETURN
@@ -428,10 +446,12 @@ AND TRANSDYNDEFS(X) BE
                        RETURN
 
         DEFAULT: RETURN  }
+}
 
-AND TRANSSTATDEFS(X) BE
-        SWITCHON H1!X INTO
-     { CASE S.AND:
+AND TRANSSTATDEFS(X)
+{
+    SWITCHON H1!X INTO {
+        CASE S.AND:
              TRANSSTATDEFS(H2!X)
              TRANSSTATDEFS(H3!X)
              RETURN
@@ -464,22 +484,24 @@ AND TRANSSTATDEFS(X) BE
              RESULTLABEL, CASEB := RL, CB
              DVECE, DVECS, DVECP := A, B, C   }
 
-        DEFAULT: RETURN   }
+        DEFAULT: RETURN
+    }
+}
 
-AND STATDEFS(X) = H1!X=S.FNDEF \/ H1!X=S.RTDEF -> TRUE,
-                  H1!X NE S.AND -> FALSE,
-                  STATDEFS(H2!X) -> TRUE,
-                  STATDEFS(H3!X)
-
-
+AND STATDEFS(X)
+{
+    RESULTIS H1!X=S.FNDEF \/ H1!X=S.RTDEF -> TRUE,
+                          H1!X NE S.AND -> FALSE,
+                         STATDEFS(H2!X) -> TRUE,
+                                           STATDEFS(H3!X)
+}
 .
 
 //    TRN3
 
-
 GET "TRNHDR"
 
-LET JUMPCOND(X, B, L) BE
+LET JUMPCOND(X, B, L)
 {    LET SW = B
      SWITCHON H1!X INTO
      { CASE S.FALSE: B := NOT B
@@ -507,8 +529,9 @@ LET JUMPCOND(X, B, L) BE
                  RETURN     }
 }
 
-AND TRANSSWITCH(X) BE
-    {   LET P, B, DL = CASEP, CASEB, DEFAULTLABEL
+AND TRANSSWITCH(X)
+{
+        LET P, B, DL = CASEP, CASEB, DEFAULTLABEL
         AND ECL = ENDCASELABEL
         LET L = NEXTPARAM()
         ENDCASELABEL := NEXTPARAM()
@@ -532,8 +555,9 @@ AND TRANSSWITCH(X) BE
         ENDCASELABEL := ECL
         CASEP, CASEB, DEFAULTLABEL := P, B, DL   }
 
-AND TRANSFOR(X) BE
-     { LET A, B = DVECE, DVECS
+AND TRANSFOR(X)
+{
+        LET A, B = DVECE, DVECS
         LET L, M = NEXTPARAM(), NEXTPARAM()
         LET BL, LL = BREAKLABEL, LOOPLABEL
         LET K, N = 0, 0
@@ -575,8 +599,9 @@ AND TRANSFOR(X) BE
 
 GET "TRNHDR"
 
-LET LOAD(X) BE
-    {  IF X=0 DO { TRANSREPORT(148, CURRENTBRANCH)
+LET LOAD(X)
+{
+    IF X=0 DO { TRANSREPORT(148, CURRENTBRANCH)
                      LOADZERO()
                      RETURN  }
 
@@ -686,13 +711,15 @@ LET LOAD(X) BE
             OUT2P(S.LLL, M)
             SSP := SSP + 1
             RETURN  }                         }
-}}
+    }
+}
 
-AND LOADLV(X) BE
-    {   IF X=0 GOTO ERR
+AND LOADLV(X)
+{
+    IF X=0 GOTO ERR
 
-        SWITCHON H1!X INTO
-     { DEFAULT:
+    SWITCHON H1!X INTO {
+        DEFAULT:
         ERR:     TRANSREPORT(113, CURRENTBRANCH)
                  LOADZERO()
                  RETURN
@@ -716,26 +743,32 @@ AND LOADLV(X) BE
             RETURN   }  }
 }
 
-AND LOADZERO() BE { OUT2(S.LN, 0)
-                     SSP := SSP + 1  }
+AND LOADZERO()
+{
+    OUT2(S.LN, 0)
+    SSP := SSP + 1
+}
 
-AND LOADLIST(X) BE UNLESS X=0 DO
+AND LOADLIST(X)
+{
+    UNLESS X=0 DO
     { UNLESS H1!X=S.COMMA DO { LOAD(X); RETURN  }
 
        LOADLIST(H2!X)
        LOADLIST(H3!X)  }
+}
 .
 
 //    TRN5
 
-
 GET "TRNHDR"
 
-LET EVALCONST(X) = VALOF
-    {   IF X=0 DO { TRANSREPORT(117, CURRENTBRANCH)
+LET EVALCONST(X)
+{
+    IF X=0 DO { TRANSREPORT(117, CURRENTBRANCH)
                      RESULTIS 0  }
 
-        SWITCHON H1!X INTO
+    SWITCHON H1!X INTO
      { DEFAULT: TRANSREPORT(118, X)
                  RESULTIS 0
 
@@ -758,8 +791,9 @@ LET EVALCONST(X) = VALOF
                     }
 }
 
-AND ASSIGN(X, Y) BE
-    {   IF X=0 \/ Y=0 DO
+AND ASSIGN(X, Y)
+{
+    IF X=0 \/ Y=0 DO
             { TRANSREPORT(110, CURRENTBRANCH)
                RETURN  }
 
@@ -788,15 +822,16 @@ AND ASSIGN(X, Y) BE
         DEFAULT: TRANSREPORT(109, CURRENTBRANCH)   }
 }
 
-AND TRANSNAME(X, P, G, L, N) BE
-    {   LET T = CELLWITHNAME(X)
-        LET K, A = DVEC!(T+1), DVEC!(T+2)
+AND TRANSNAME(X, P, G, L, N)
+{
+    LET T = CELLWITHNAME(X)
+    LET K, A = DVEC!(T+1), DVEC!(T+2)
 
-        IF T=0 DO { TRANSREPORT(115, X)
+    IF T=0 DO { TRANSREPORT(115, X)
                      OUT2(G, 2)
                      RETURN  }
 
-        SWITCHON K INTO
+    SWITCHON K INTO
         { CASE S.LOCAL: IF T<DVECP DO TRANSREPORT(116, X)
                          OUT2(P, A); RETURN
 
@@ -815,127 +850,168 @@ AND TRANSNAME(X, P, G, L, N) BE
 
 GET "TRNHDR"
 
-LET COMPLAB(L) BE OUT2P(S.LAB, L)
+LET COMPLAB(L)
+{
+    OUT2P(S.LAB, L)
+}
 
-AND COMPENTRY(N, L) BE
-    {  LET S = @N!2
-        OUT3P(S.ENTRY, getbyte(S, 0), L)
-        FOR I = 1 TO getbyte(S, 0) DO OUTC(getbyte(S, I))
-        WRC('*S')  }
+AND COMPENTRY(N, L)
+{
+    LET S = @N!2
+    OUT3P(S.ENTRY, getbyte(S, 0), L)
+    FOR I = 1 TO getbyte(S, 0) DO OUTC(getbyte(S, I))
+    WRC('*S')
+}
 
-AND COMPDATALAB(L) BE OUT2P(S.DATALAB, L)
+AND COMPDATALAB(L)
+{
+    OUT2P(S.DATALAB, L)
+}
 
-AND COMPJUMP(L) BE OUT2P(S.JUMP, L)
+AND COMPJUMP(L)
+{
+    OUT2P(S.JUMP, L)
+}
 
-AND OUT1(X) BE
-    { WRITEOP(X); WRC('*S')  }
+AND OUT1(X)
+{
+    WRITEOP(X); WRC('*S')
+}
 
-AND OUT2(X, Y) BE
-    { WRITEOP(X); WRC('*S')
-       WRN(Y); WRC('*S')   }
+AND OUT2(X, Y)
+{
+    WRITEOP(X); WRC('*S')
+    WRN(Y); WRC('*S')
+}
 
-AND OUT2P(X, Y) BE
-    { WRITEOP(X); WRC('*S'); WRC('L')
-       WRN(Y); WRC('*S')   }
+AND OUT2P(X, Y)
+{
+    WRITEOP(X); WRC('*S'); WRC('L')
+    WRN(Y); WRC('*S')
+}
 
-AND OUT3P(X, Y, Z) BE
-    { WRITEOP(X); WRC('*S')
-       WRN(Y); WRC('*S'); WRC('L')
-       WRN(Z); WRC('*S')   }
+AND OUT3P(X, Y, Z)
+{
+    WRITEOP(X); WRC('*S')
+    WRN(Y); WRC('*S'); WRC('L')
+    WRN(Z); WRC('*S')
+}
 
+AND OUTN(N)
+{
+    WRN(N)
+}
 
-AND OUTN(N) BE WRN(N)
+AND OUTL(X)
+{
+    WRC('*S'); WRC('L'); WRN(X); WRC('*S')
+}
 
-AND OUTL(X) BE
-    { WRC('*S'); WRC('L'); WRN(X); WRC('*S')  }
+AND OUTC(X)
+{
+    WRN(CHARCODE(X)); WRC('*S')
+}
 
-AND OUTC(X) BE
-    { WRN(CHARCODE(X)); WRC('*S')   }
+AND WRITEOP(X)
+{
+    LET S = 0
 
-AND WRITEOP(X) BE
-    {   LET S = VALOF SWITCHON X INTO
-        { DEFAULT: TRANSREPORT(199, CURRENTBRANCH)
-                    RESULTIS 'ERROR'
+    SWITCHON X INTO {
+        DEFAULT: TRANSREPORT(199, CURRENTBRANCH); S := 'ERROR'; ENDCASE
 
-           CASE S.MULT:    RESULTIS "MULT"
-           CASE S.DIV:     RESULTIS "DIV"
-           CASE S.REM:     RESULTIS "REM"
-           CASE S.PLUS:    RESULTIS "PLUS"
-           CASE S.MINUS:   RESULTIS "MINUS"
-           CASE S.EQ:      RESULTIS "EQ"
-           CASE S.NE:      RESULTIS "NE"
-           CASE S.LS:      RESULTIS "LS"
-           CASE S.GR:      RESULTIS "GR"
-           CASE S.LE:      RESULTIS "LE"
-           CASE S.GE:      RESULTIS "GE"
-           CASE S.LSHIFT:  RESULTIS "LSHIFT"
-           CASE S.RSHIFT:  RESULTIS "RSHIFT"
-           CASE S.LOGAND:  RESULTIS "LOGAND"
-           CASE S.LOGOR:   RESULTIS "LOGOR"
-           CASE S.EQV:     RESULTIS "EQV"
-           CASE S.NEQV:    RESULTIS "NEQV"
+        CASE S.MULT:    S := "MULT"; ENDCASE
+        CASE S.DIV:     S := "DIV"; ENDCASE
+        CASE S.REM:     S := "REM"; ENDCASE
+        CASE S.PLUS:    S := "PLUS"; ENDCASE
+        CASE S.MINUS:   S := "MINUS"; ENDCASE
+        CASE S.EQ:      S := "EQ"; ENDCASE
+        CASE S.NE:      S := "NE"; ENDCASE
+        CASE S.LS:      S := "LS"; ENDCASE
+        CASE S.GR:      S := "GR"; ENDCASE
+        CASE S.LE:      S := "LE"; ENDCASE
+        CASE S.GE:      S := "GE"; ENDCASE
+        CASE S.LSHIFT:  S := "LSHIFT"; ENDCASE
+        CASE S.RSHIFT:  S := "RSHIFT"; ENDCASE
+        CASE S.LOGAND:  S := "LOGAND"; ENDCASE
+        CASE S.LOGOR:   S := "LOGOR"; ENDCASE
+        CASE S.EQV:     S := "EQV"; ENDCASE
+        CASE S.NEQV:    S := "NEQV"; ENDCASE
 
-           CASE S.NEG:     RESULTIS "NEG"
-           CASE S.NOT:     RESULTIS "NOT"
-           CASE S.RV:      RESULTIS "RV"
+        CASE S.NEG:     S := "NEG"; ENDCASE
+        CASE S.NOT:     S := "NOT"; ENDCASE
+        CASE S.RV:      S := "RV"; ENDCASE
 
-           CASE S.TRUE:    RESULTIS "TRUE"
-           CASE S.FALSE:   RESULTIS "FALSE"
-           CASE S.QUERY:   RESULTIS "QUERY"
+        CASE S.TRUE:    S := "TRUE"; ENDCASE
+        CASE S.FALSE:   S := "FALSE"; ENDCASE
+        CASE S.QUERY:   S := "QUERY"; ENDCASE
 
-           CASE S.LP:      RESULTIS "LP"
-           CASE S.LG:      RESULTIS "LG"
-           CASE S.LN:      RESULTIS "LN"
-           CASE S.LSTR:    RESULTIS "LSTR"
-           CASE S.LL:      RESULTIS "LL"
+        CASE S.LP:      S := "LP"; ENDCASE
+        CASE S.LG:      S := "LG"; ENDCASE
+        CASE S.LN:      S := "LN"; ENDCASE
+        CASE S.LSTR:    S := "LSTR"; ENDCASE
+        CASE S.LL:      S := "LL"; ENDCASE
 
-           CASE S.LLP:     RESULTIS "LLP"
-           CASE S.LLG:     RESULTIS "LLG"
-           CASE S.LLL:     RESULTIS "LLL"
+        CASE S.LLP:     S := "LLP"; ENDCASE
+        CASE S.LLG:     S := "LLG"; ENDCASE
+        CASE S.LLL:     S := "LLL"; ENDCASE
 
-           CASE S.SP:      RESULTIS "SP"
-           CASE S.SG:      RESULTIS "SG"
-           CASE S.SL:      RESULTIS "SL"
-           CASE S.STIND:   RESULTIS "STIND"
+        CASE S.SP:      S := "SP"; ENDCASE
+        CASE S.SG:      S := "SG"; ENDCASE
+        CASE S.SL:      S := "SL"; ENDCASE
+        CASE S.STIND:   S := "STIND"; ENDCASE
 
-           CASE S.JUMP:    RESULTIS "JUMP"
-           CASE S.JT:      RESULTIS "JT"
-           CASE S.JF:      RESULTIS "JF"
-           CASE S.GOTO:    RESULTIS "GOTO"
-           CASE S.LAB:     RESULTIS "LAB"
-           CASE S.STACK:   RESULTIS "STACK"
-           CASE S.STORE:   RESULTIS "STORE"
+        CASE S.JUMP:    S := "JUMP"; ENDCASE
+        CASE S.JT:      S := "JT"; ENDCASE
+        CASE S.JF:      S := "JF"; ENDCASE
+        CASE S.GOTO:    S := "GOTO"; ENDCASE
+        CASE S.LAB:     S := "LAB"; ENDCASE
+        CASE S.STACK:   S := "STACK"; ENDCASE
+        CASE S.STORE:   S := "STORE"; ENDCASE
 
-           CASE S.ENTRY:   RESULTIS "ENTRY"
-           CASE S.SAVE:    RESULTIS "SAVE"
-           CASE S.FNAP:    RESULTIS "FNAP"
-           CASE S.FNRN:    RESULTIS "FNRN"
-           CASE S.RTAP:    RESULTIS "RTAP"
-           CASE S.RTRN:    RESULTIS "RTRN"
-           CASE S.ENDPROC: RESULTIS "ENDPROC"
-           CASE S.RES:     RESULTIS "RES"
-           CASE S.RSTACK:  RESULTIS "RSTACK"
-           CASE S.FINISH:  RESULTIS "FINISH"
+        CASE S.ENTRY:   S := "ENTRY"; ENDCASE
+        CASE S.SAVE:    S := "SAVE"; ENDCASE
+        CASE S.FNAP:    S := "FNAP"; ENDCASE
+        CASE S.FNRN:    S := "FNRN"; ENDCASE
+        CASE S.RTAP:    S := "RTAP"; ENDCASE
+        CASE S.RTRN:    S := "RTRN"; ENDCASE
+        CASE S.ENDPROC: S := "ENDPROC"; ENDCASE
+        CASE S.RES:     S := "RES"; ENDCASE
+        CASE S.RSTACK:  S := "RSTACK"; ENDCASE
+        CASE S.FINISH:  S := "FINISH"; ENDCASE
 
-           CASE S.SWITCHON:RESULTIS "SWITCHON"
-           CASE S.GLOBAL:  RESULTIS "GLOBAL"
-           CASE S.DATALAB: RESULTIS "DATALAB"
-           CASE S.ITEML:   RESULTIS "ITEML"
-           CASE S.ITEMN:   RESULTIS "ITEMN"   }
+        CASE S.SWITCHON:S := "SWITCHON"; ENDCASE
+        CASE S.GLOBAL:  S := "GLOBAL"; ENDCASE
+        CASE S.DATALAB: S := "DATALAB"; ENDCASE
+        CASE S.ITEML:   S := "ITEML"; ENDCASE
+        CASE S.ITEMN:   S := "ITEMN"; ENDCASE
+    }
 
-        FOR I = 1 TO getbyte(S, 0) DO WRC(getbyte(S, I))   }
+    FOR I = 1 TO getbyte(S, 0) DO
+        WRC(getbyte(S, I))
+}
 
+AND WRN(N)
+{
+    IF N<0 DO { WRC('-'); N := - N  }
+    WRPN(N)
+}
 
-AND WRN(N) BE { IF N<0 DO { WRC('-'); N := - N  }
-                 WRPN(N)  }
+AND WRPN(N)
+{
+    IF N>9 DO WRPN(N/10)
+    WRC(N REM 10 + '0')
+}
 
-AND WRPN(N) BE { IF N>9 DO WRPN(N/10)
-                  WRC(N REM 10 + '0')  }
+AND ENDOCODE()
+{
+    wrch('*N'); OCOUNT := 0
+}
 
-AND ENDOCODE() BE { wrch('*N'); OCOUNT := 0  }
-
-
-AND WRC(CH) BE { OCOUNT := OCOUNT + 1
-                  IF OCOUNT>62 /\ CH='*S' DO
-                            { wrch('*N'); OCOUNT := 0; RETURN  }
-                  wrch(CH)  }
+AND WRC(CH)
+{
+    OCOUNT := OCOUNT + 1
+    IF OCOUNT>62 /\ CH='*S' DO {
+        wrch('*N'); OCOUNT := 0; RETURN
+    }
+    wrch(CH)
+}

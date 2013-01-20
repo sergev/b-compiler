@@ -629,37 +629,37 @@ AND CAEMESSAGE(n, a)
 {
     LET s = 0;
 
-    SWITCHON N INTO {
+    SWITCHON n INTO {
         DEFAULT:  writen(n); RETURN
 
-        CASE 91: s = "'8'  '(' OR ')' EXPECTED"; ENDCASE
-        CASE 94: s = "ILLEGAL CHARACTER"; ENDCASE
-        CASE 95: s = "STRING TOO LONG"; ENDCASE
-        CASE 96: s = "NO INPUT %S"; ENDCASE
-        CASE 97: s = "STRING OR NUMBER EXPECTED"; ENDCASE
-        CASE 98: s = "PROGRAM TOO LARGE"; ENDCASE
-        CASE 99: s = "INCORRECT TERMINATION"; ENDCASE
+        CASE 91: s := "'8'  '(' OR ')' EXPECTED"; ENDCASE
+        CASE 94: s := "ILLEGAL CHARACTER"; ENDCASE
+        CASE 95: s := "STRING TOO LONG"; ENDCASE
+        CASE 96: s := "NO INPUT %S"; ENDCASE
+        CASE 97: s := "STRING OR NUMBER EXPECTED"; ENDCASE
+        CASE 98: s := "PROGRAM TOO LARGE"; ENDCASE
+        CASE 99: s := "INCORRECT TERMINATION"; ENDCASE
 
         CASE 8:CASE 40:CASE 43:
-                 s = "NAME EXPECTED"; ENDCASE
-        CASE 6: s = "'{' EXPECTED"; ENDCASE
-        CASE 7: s = "'}' EXPECTED"; ENDCASE
-        CASE 9: s = "UNTAGGED '}' MISMATCH"; ENDCASE
-        CASE 32: s = "ERROR IN EXPRESSION"; ENDCASE
-        CASE 33: s = "ERROR IN NUMBER"; ENDCASE
-        CASE 34: s = "BAD STRING"; ENDCASE
-        CASE 15:CASE 19:CASE 41: s = "')' MISSING"; ENDCASE
-        CASE 30: s = "',' MISSING"; ENDCASE
-        CASE 42: s = "'=' OR 'BE' EXPECTED"; ENDCASE
-        CASE 44: s = "'=' OR '(' EXPECTED"; ENDCASE
-        CASE 50: s = "ERROR IN LABEL"; ENDCASE
-        CASE 51: s = "ERROR IN COMMAND"; ENDCASE
-        CASE 54: s = "'OR' EXPECTED"; ENDCASE
-        CASE 57: s = "'=' EXPECTED"; ENDCASE
-        CASE 58: s = "'TO' EXPECTED"; ENDCASE
-        CASE 60: s = "'INTO' EXPECTED"; ENDCASE
-        CASE 61:CASE 62: s = "':' EXPECTED"; ENDCASE
-        CASE 63: s = "'**/' MISSING"; ENDCASE
+                 s := "NAME EXPECTED"; ENDCASE
+        CASE 6: s := "'{' EXPECTED"; ENDCASE
+        CASE 7: s := "'}' EXPECTED"; ENDCASE
+        CASE 9: s := "UNTAGGED '}' MISMATCH"; ENDCASE
+        CASE 32: s := "ERROR IN EXPRESSION"; ENDCASE
+        CASE 33: s := "ERROR IN NUMBER"; ENDCASE
+        CASE 34: s := "BAD STRING"; ENDCASE
+        CASE 15:CASE 19:CASE 41: s := "')' MISSING"; ENDCASE
+        CASE 30: s := "',' MISSING"; ENDCASE
+        CASE 42: s := "'=' OR 'BE' EXPECTED"; ENDCASE
+        CASE 44: s := "'=' OR '(' EXPECTED"; ENDCASE
+        CASE 50: s := "ERROR IN LABEL"; ENDCASE
+        CASE 51: s := "ERROR IN COMMAND"; ENDCASE
+        CASE 54: s := "'OR' EXPECTED"; ENDCASE
+        CASE 57: s := "'=' EXPECTED"; ENDCASE
+        CASE 58: s := "'TO' EXPECTED"; ENDCASE
+        CASE 60: s := "'INTO' EXPECTED"; ENDCASE
+        CASE 61:CASE 62: s := "':' EXPECTED"; ENDCASE
+        CASE 63: s := "'**/' MISSING"; ENDCASE
     }
     writef(s, a)
 }
