@@ -8,13 +8,13 @@ LET writes(s)
         wrch(getbyte(s, i))
 }
 
-AND unpackstring(s, v)
+LET unpackstring(s, v)
 {
     FOR i = 0 TO getbyte(s, 0) DO
         v!i := getbyte(s, i)
 }
 
-AND packstring(v, s)
+LET packstring(v, s)
 {
     LET n = v!0 & 255
     LET i = n/4
@@ -30,10 +30,10 @@ AND packstring(v, s)
 
 // THE DEFINITIONS THAT FOLLOW ARE MACHINE INDEPENDENT
 
-AND writed(n, d)
+LET writed(n, d)
 {
     LET t = VEC 20
-    AND i, k = 0, n
+    LET i, k = 0, n
     IF n<0 DO
         d, k := d-1, -n
     t!i, k, i := k REM 10, k/10, i+1 REPEATUNTIL k=0
@@ -45,25 +45,25 @@ AND writed(n, d)
         wrch(t!j+'0')
 }
 
-AND writen(n)
+LET writen(n)
 {
     writed(n, 0)
 }
 
-AND newline()
+LET newline()
 {
     wrch('*N')
 }
 
-AND newpage()
+LET newpage()
 {
     wrch('*P')
 }
 
-AND readn()
+LET readn()
 {
     LET sum = 0
-    AND neg = FALSE
+    LET neg = FALSE
 
 L:  terminator := rdch()
     SWITCHON terminator INTO {
@@ -83,14 +83,14 @@ L:  terminator := rdch()
     RESULTIS sum
 }
 
-AND writeoct(n, d)
+LET writeoct(n, d)
 {
     IF d>1 DO
         writeoct(n>>3, d-1)
     wrch((n/\7)+'0')
 }
 
-AND writehex(n, d)
+LET writehex(n, d)
 {
     IF d>1 DO
         writehex(n>>4, d-1)
@@ -99,7 +99,7 @@ AND writehex(n, d)
         '8','9','A','B','C','D','E','F')
 }
 
-AND writef(format, a, b, c, d, e, f, g, h, i, j, k)
+LET writef(format, a, b, c, d, e, f, g, h, i, j, k)
 {
     LET t = @a
 
@@ -108,10 +108,10 @@ AND writef(format, a, b, c, d, e, f, g, h, i, j, k)
 
         TEST k='%' THEN {
             LET f, q, n = 0, t!0, 0
-            AND TYPE = getbyte(format, p+1)
+            LET type = getbyte(format, p+1)
             p := p + 1
-            SWITCHON TYPE INTO {
-                DEFAULT: wrch(TYPE); ENDCASE
+            SWITCHON type INTO {
+                DEFAULT: wrch(type); ENDCASE
 
                 CASE 'S': f := writes; GOTO L
                 CASE 'C': f := wrch; GOTO L
@@ -131,4 +131,4 @@ AND writef(format, a, b, c, d, e, f, g, h, i, j, k)
     }
 }
 
-//AND mapstore() { writes("*Nmapstore NOT IMPLEMENTED*N"); }
+//LET mapstore() { writes("*Nmapstore NOT IMPLEMENTED*N"); }

@@ -29,7 +29,8 @@ GLOBAL {
 
 LET writes(s)
 {
-    FOR i = 1 TO getbyte(s, 0) DO wrch(getbyte(s, i))
+    FOR i = 1 TO getbyte(s, 0) DO
+        wrch(getbyte(s, i))
 }
 
 LET start()

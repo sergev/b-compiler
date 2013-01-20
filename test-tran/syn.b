@@ -47,8 +47,8 @@ selectoutput(SYSPRINT)
 
 writef("*NBCPL %N*N", @start)
 
-{ LET OPT = VEC 20
-   AND TREESIZE = 5500
+{  LET OPT = VEC 20
+   LET TREESIZE = 5500
    OPTION := OPT
    SAVESPACESIZE := 2
    PPTRACE := FALSE
@@ -59,7 +59,7 @@ SOURCESTREAM := findinput("OPTIONS")
 
 UNLESS SOURCESTREAM=0 DO
 {   LET CH = 0
-    AND N = 0
+    LET N = 0
     selectinput(SOURCESTREAM)
     writes("OPTIONS  ")
 
@@ -111,6 +111,25 @@ IF OCODE=0 DO OCODE := SYSPRINT
 
 
 GET "SYNHDR"
+
+LET value(CH)
+{
+    RESULTIS '0'<=CH<='9' -> CH-'0',
+             'A'<=CH<='F' -> CH-'A'+10,
+                             100
+}
+
+LET readnumber(RADIX)
+{
+       LET D = value(CH)
+       DECVAL := D
+       IF D>=RADIX DO CAEREPORT(33)
+
+       { RCH()
+          D := value(CH)
+          IF D>=RADIX RETURN
+          DECVAL := RADIX*DECVAL + D  } REPEAT
+}
 
 LET NEXTSYMB()
 {
@@ -292,25 +311,6 @@ NEXT:
 
        L: RCH()   }
 }
-
-AND readnumber(RADIX)
-{
-       LET D = VALUE(CH)
-       DECVAL := D
-       IF D>=RADIX DO CAEREPORT(33)
-
-       { RCH()
-          D := VALUE(CH)
-          IF D>=RADIX RETURN
-          DECVAL := RADIX*DECVAL + D  } REPEAT
-}
-
-AND VALUE(CH)
-{
-    RESULTIS '0'<=CH<='9' -> CH-'0',
-             'A'<=CH<='F' -> CH-'A'+10,
-                             100
-}
 .
 
 //    LEX2
@@ -326,7 +326,7 @@ LET D(S, ITEM)
     WORDNODE!0 := ITEM
 }
 
-AND DECLSYSWORDS()
+LET DECLSYSWORDS()
 {
     D("AND", S.AND)
 
@@ -403,7 +403,7 @@ AND DECLSYSWORDS()
     D("$", 0); NULLTAG := WORDNODE
 }
 
-AND LOOKUPWORD()
+LET LOOKUPWORD()
 {
         LET HASHVAL = (WORDV!0+WORDV!WORDSIZE >> 1) REM NAMETABLESIZE
         LET M = @NAMETABLE!HASHVAL
@@ -443,7 +443,7 @@ LET RCH()
        CHBUF!(CHCOUNT&63) := CH
 }
 
-AND wrchbuf()
+LET wrchbuf()
 {
        writes("*N...")
        FOR P = CHCOUNT-63 TO CHCOUNT DO
@@ -452,7 +452,7 @@ AND wrchbuf()
        newline()
 }
 
-AND RDTAG(X)
+LET RDTAG(X)
 {
         CHARP, CHARV!1 := 1, X
 
@@ -468,7 +468,29 @@ AND RDTAG(X)
         WORDSIZE := packstring(CHARV, WORDV)
 }
 
-AND PERFORMGET()
+LET append(D, S)
+{
+       LET ND = getbyte(D, 0)
+       LET NS = getbyte(S, 0)
+       FOR I = 1 TO NS DO {
+           ND := ND + 1
+           putbyte(D, ND, getbyte(S, I)) }
+       putbyte(D, 0, ND)
+}
+
+LET findlibinput(NAME)
+{
+       LET PATH = VEC 64
+       LET DIR = "/usr/lib/bcpl/"
+       TEST getbyte(DIR, 0) + getbyte(NAME, 0) > 255
+       THEN RESULTIS 0
+         OR { putbyte(PATH, 0, 0)
+               append(PATH, DIR)
+               append(PATH, NAME)
+               RESULTIS findinput(PATH) }
+}
+
+LET PERFORMGET()
 {
        NEXTSYMB()
        UNLESS SYMB=S.STRING THEN CAEREPORT(97)
@@ -487,28 +509,6 @@ AND PERFORMGET()
        selectinput(SOURCESTREAM)
        RCH()
 }
-
-AND APPEND(D, S)
-{
-       LET ND = getbyte(D, 0)
-       AND NS = getbyte(S, 0)
-       FOR I = 1 TO NS DO {
-           ND := ND + 1
-           putbyte(D, ND, getbyte(S, I)) }
-       putbyte(D, 0, ND)
-}
-
-AND findlibinput(NAME)
-{
-       LET PATH = VEC 64
-       AND DIR = "/usr/lib/bcpl/"
-       TEST getbyte(DIR, 0) + getbyte(NAME, 0) > 255
-       THEN RESULTIS 0
-         OR { putbyte(PATH, 0, 0)
-               APPEND(PATH, DIR)
-               APPEND(PATH, NAME)
-               RESULTIS findinput(PATH) }
-}
 .
 
 //    CAE0
@@ -525,107 +525,49 @@ LET NEWVEC(N)
         RESULTIS TREEP
 }
 
-AND LIST1(X)
+LET LIST1(X)
 {
        LET P = NEWVEC(0)
        P!0 := X
        RESULTIS P
 }
 
-AND LIST2(X, Y)
+LET LIST2(X, Y)
 {
         LET P = NEWVEC(1)
         P!0, P!1 := X, Y
         RESULTIS P
 }
 
-AND LIST3(X, Y, Z)
+LET LIST3(X, Y, Z)
 {
         LET P = NEWVEC(2)
         P!0, P!1, P!2 := X, Y, Z
         RESULTIS P
 }
 
-AND LIST4(X, Y, Z, T)
+LET LIST4(X, Y, Z, T)
 {
         LET P = NEWVEC(3)
         P!0, P!1, P!2, P!3 := X, Y, Z, T
         RESULTIS P
 }
 
-AND LIST5(X, Y, Z, T, U)
+LET LIST5(X, Y, Z, T, U)
 {
         LET P = NEWVEC(4)
         P!0, P!1, P!2, P!3, P!4 := X, Y, Z, T, U
         RESULTIS P
 }
 
-AND LIST6(X, Y, Z, T, U, V)
+LET LIST6(X, Y, Z, T, U, V)
 {
         LET P = NEWVEC(5)
         P!0, P!1, P!2, P!3, P!4, P!5 := X, Y, Z, T, U, V
         RESULTIS P
 }
 
-AND CAEREPORT(N, A)
-{
-        REPORTCOUNT := REPORTCOUNT + 1
-        writef("*NSYNTAX ERROR NEAR LINE %N:  ", LINECOUNT)
-        CAEMESSAGE(N, A)
-        wrchbuf()
-        IF REPORTCOUNT GR REPORTMAX DO
-                    { writes('*NCOMPILATION ABORTED*N')
-                       stop(8)   }
-        NLPENDING := FALSE
-
-        UNTIL SYMB=S.LSECT \/ SYMB=S.RSECT \/
-              SYMB=S.LET \/ SYMB=S.AND \/
-              SYMB=S.END \/ NLPENDING DO NEXTSYMB()
-        longjump(REC.P, REC.L)
-}
-
-AND FORMTREE()
-{
-    CHCOUNT := 0
-    FOR I = 0 TO 63 DO CHBUF!I := 0
-
-     { LET V = VEC 10   // FOR 'GET' STREAMS
-        GETV, GETP, GETT := V, 0, 10
-
-     { LET V = VEC 100
-        WORDV := V
-
-     { LET V = VEC 256
-        CHARV, CHARP := V, 0
-
-     { LET V = VEC 100
-        NAMETABLE, NAMETABLESIZE := V, 100
-        FOR I = 0 TO 100 DO NAMETABLE!I := 0
-
-        REC.P, REC.L := level(), L
-
-        LINECOUNT, PRLINE := 1, 0
-        RCH()
-
-        IF CH=ENDSTREAMCH RESULTIS 0
-        DECLSYSWORDS()
-
-     L: NEXTSYMB()
-
-        IF OPTION!1 DO   //   PP DEBUGGING OPTION
-             { writef("%N %S*N", SYMB, WORDV)
-                IF SYMB=S.END RESULTIS 0
-                GOTO L  }
-
-     { LET A = RDBLOCKBODY()
-        UNLESS SYMB=S.END DO { CAEREPORT(99); GOTO L  }
-
-        RESULTIS A        }
-}}}}}
-
-
-
-AND CAEMESSAGE(n, a)
+LET caemessage(n, a)
 {
     LET s = 0;
 
@@ -663,6 +605,62 @@ AND CAEMESSAGE(n, a)
     }
     writef(s, a)
 }
+
+LET CAEREPORT(N, A)
+{
+        REPORTCOUNT := REPORTCOUNT + 1
+        writef("*NSYNTAX ERROR NEAR LINE %N:  ", LINECOUNT)
+        caemessage(N, A)
+        wrchbuf()
+        IF REPORTCOUNT GR REPORTMAX DO
+                    { writes('*NCOMPILATION ABORTED*N')
+                       stop(8)   }
+        NLPENDING := FALSE
+
+        UNTIL SYMB=S.LSECT \/ SYMB=S.RSECT \/
+              SYMB=S.LET \/ SYMB=S.AND \/
+              SYMB=S.END \/ NLPENDING DO NEXTSYMB()
+        longjump(REC.P, REC.L)
+}
+
+LET FORMTREE()
+{
+    CHCOUNT := 0
+    FOR I = 0 TO 63 DO CHBUF!I := 0
+
+     { LET V = VEC 10   // FOR 'GET' STREAMS
+        GETV, GETP, GETT := V, 0, 10
+
+     { LET V = VEC 100
+        WORDV := V
+
+     { LET V = VEC 256
+        CHARV, CHARP := V, 0
+
+     { LET V = VEC 100
+        NAMETABLE, NAMETABLESIZE := V, 100
+        FOR I = 0 TO 100 DO NAMETABLE!I := 0
+
+        REC.P, REC.L := level(), L
+
+        LINECOUNT, PRLINE := 1, 0
+        RCH()
+
+        IF CH=ENDSTREAMCH RESULTIS 0
+        DECLSYSWORDS()
+
+     L: NEXTSYMB()
+
+        IF OPTION!1 DO   //   PP DEBUGGING OPTION
+             { writef("%N %S*N", SYMB, WORDV)
+                IF SYMB=S.END RESULTIS 0
+                GOTO L  }
+
+     { LET A = RDBLOCKBODY()
+        UNLESS SYMB=S.END DO { CAEREPORT(99); GOTO L  }
+
+        RESULTIS A        }
+}}}}}
 .
 
 //    CAE1
@@ -708,7 +706,7 @@ LET RDBLOCKBODY()
                RESULTIS A   }
 }
 
-AND RDSEQ()
+LET RDSEQ()
 {
        LET A = 0
        IGNORE(S.SEMICOLON)
@@ -717,7 +715,7 @@ AND RDSEQ()
        RESULTIS LIST3(S.SEQ, A, RDSEQ())
 }
 
-AND RDCDEFS()
+LET RDCDEFS()
 {
         LET A, B = 0, 0
         LET PTR = @A
@@ -735,7 +733,7 @@ AND RDCDEFS()
         RESULTIS A
 }
 
-AND RDSECT(R)
+LET RDSECT(R)
 {
         LET TAG, A = WORDNODE, 0
         CHECKFOR(S.LSECT, 6)
@@ -749,7 +747,7 @@ AND RDSECT(R)
         RESULTIS A
 }
 
-AND RNAMELIST()
+LET RNAMELIST()
 {
         LET A = RNAME()
         UNLESS SYMB=S.COMMA RESULTIS A
@@ -757,19 +755,19 @@ AND RNAMELIST()
         RESULTIS LIST3(S.COMMA, A, RNAMELIST())
 }
 
-AND RNAME()
+LET RNAME()
 {
        LET A = WORDNODE
        CHECKFOR(S.NAME, 8)
        RESULTIS A
 }
 
-AND IGNORE(ITEM)
+LET IGNORE(ITEM)
 {
     IF SYMB=ITEM DO NEXTSYMB()
 }
 
-AND CHECKFOR(ITEM, N)
+LET CHECKFOR(ITEM, N)
 {
     UNLESS SYMB=ITEM DO CAEREPORT(N)
     NEXTSYMB()
@@ -839,7 +837,7 @@ LET RBEXP()
                       RESULTIS LIST2(S.TABLE, REXPLIST())   }
 }
 
-AND REXP(N)
+LET REXP(N)
 {
     LET A = RBEXP()
 
@@ -1043,7 +1041,7 @@ LET RBCOM()
                 RESULTIS RDSECT(RDBLOCKBODY)   }
 }
 
-AND RCOM()
+LET RCOM()
 {
         LET A = RBCOM()
 

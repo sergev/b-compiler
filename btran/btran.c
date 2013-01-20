@@ -2539,10 +2539,6 @@ int *rdblockbody()
         nextsymb();
         a = rdef();
 recover:
-        while (symb == S_AND) {
-            nextsymb();
-            a = list3(S_AND, a, rdef());
-        }
         a = list3(S_LET, a, rdblockbody());
         break;
 

@@ -59,18 +59,18 @@ MANIFEST {
 
 LET writes(s)
 {
-    FOR i = 1 TO getbyte(s, 0) DO wrch(getbyte(s, i))
-    RETURN
+    FOR i = 1 TO getbyte(s, 0) DO
+        wrch(getbyte(s, i))
 }
 
-AND writeoct(n, d)
+LET writeoct(n, d)
 {
     IF d>1 DO
         writeoct(n>>3, d-1)
     wrch((n/\7)+'0')
 }
 
-AND writehex(n, d)
+LET writehex(n, d)
 {
     IF d>1 DO
         writehex(n>>4, d-1)
@@ -79,10 +79,10 @@ AND writehex(n, d)
         '8','9','A','B','C','D','E','F')
 }
 
-AND writed(n, d)
+LET writed(n, d)
 {
     LET t = VEC 20
-    AND i, k = 0, n
+    LET i, k = 0, n
     IF n<0 DO
         d, k := d-1, -n
     t!i, k, i := k REM 10, k/10, i+1 REPEATUNTIL k=0
@@ -94,7 +94,7 @@ AND writed(n, d)
         wrch(t!j+'0')
 }
 
-AND writef(format, a, b, c, d, e, f, g, h, i, j, k)
+LET writef(format, a, b, c, d, e, f, g, h, i, j, k)
 {
     LET t = @a
 
@@ -103,10 +103,10 @@ AND writef(format, a, b, c, d, e, f, g, h, i, j, k)
 
         TEST k='%' THEN {
             LET f, q, n = 0, t!0, 0
-            AND TYPE = getbyte(format, p+1)
+            LET type = getbyte(format, p+1)
             p := p + 1
-            SWITCHON TYPE INTO {
-                DEFAULT: wrch(TYPE); ENDCASE
+            SWITCHON type INTO {
+                DEFAULT: wrch(type); ENDCASE
 
                 CASE 'S': f := writes; GOTO L
                 CASE 'C': f := wrch; GOTO L
@@ -149,14 +149,7 @@ LET t1(a,b,c,D,E,f,g)
     RESULTIS t(a+b+c+D+E+f, g)
 }
 
-LET start(parm)
-{
-    LET v1 = VEC 200
-    AND v2 = VEC 200
-    tester(0, 1, 2, v1, v2)
-}
-
-AND tester(x, y, z, v1, v2)
+LET tester(x, y, z, v1, v2)
 {
     writef("*NCGTESTER ENTERED *N*N")
 
@@ -308,7 +301,7 @@ L1: a := 11
 
     {
         LET s1, s1f = 0, 0
-        AND s2, s2f = 0, 0
+        LET s2, s2f = 0, 0
 
         FOR i = -200 TO 200 DO {
             SWITCHON i INTO {
@@ -431,4 +424,11 @@ L1: a := 11
 
     writef("*N%N TESTS COMPLETED, %N FAILURE(S)*N*N",
             testcount, failcount)
+}
+
+LET start(parm)
+{
+    LET v1 = VEC 200
+    LET v2 = VEC 200
+    tester(0, 1, 2, v1, v2)
 }

@@ -8,20 +8,7 @@ LET NEXTPARAM()
     RESULTIS PARAMNUMBER
 }
 
-AND TRANSREPORT(N, X)
-{
-       selectoutput(SYSPRINT)
-       REPORTCOUNT := REPORTCOUNT + 1
-       IF REPORTCOUNT GE REPORTMAX DO
-                { writes("*NCOMPILATION ABORTED*N")
-                   stop(8)  }
-       writes("*NREPORT:   "); TRNMESSAGE(N)
-       writef("*NCOMMANDS COMPILED %N*N", COMCOUNT)
-       PLIST(X, 0, 4); newline()
-       selectoutput(OCODE)
-}
-
-AND TRNMESSAGE(N)
+LET TRNMESSAGE(N)
 {
     LET S = 0
 
@@ -46,6 +33,19 @@ AND TRNMESSAGE(N)
                   S := "LTYPE EXPRESSION EXPECTED"; ENDCASE
     }
     writes(S)
+}
+
+LET TRANSREPORT(N, X)
+{
+       selectoutput(SYSPRINT)
+       REPORTCOUNT := REPORTCOUNT + 1
+       IF REPORTCOUNT GE REPORTMAX DO
+                { writes("*NCOMPILATION ABORTED*N")
+                   stop(8)  }
+       writes("*NREPORT:   "); TRNMESSAGE(N)
+       writef("*NCOMMANDS COMPILED %N*N", COMCOUNT)
+       PLIST(X, 0, 4); newline()
+       selectoutput(OCODE)
 }
 
 LET COMPILEAE(X)
@@ -125,8 +125,8 @@ NEXT:
     CASE S.GLOBAL:
     CASE S.MANIFEST:
      {   LET A, B, S = DVECE, DVECS, SSP
-         AND OP = H1!X
-         AND Y = H2!X
+         LET OP = H1!X
+         LET Y = H2!X
 
          IF OP=S.MANIFEST DO OP := S.NUMBER
 
@@ -315,7 +315,7 @@ LET DECLNAMES(X)
     }
 }
 
-AND DECLDYN(X)
+LET DECLDYN(X)
 {
     UNLESS X=0 DO
     { IF H1!X=S.NAME DO
@@ -332,7 +332,7 @@ AND DECLDYN(X)
        TRANSREPORT(103, X)   }
 }
 
-AND DECLSTAT(X, L)
+LET DECLSTAT(X, L)
 {
     LET T = CELLWITHNAME(X)
 
@@ -352,42 +352,7 @@ AND DECLSTAT(X, L)
        OUT2P(S.ITEML, L)    }
 }
 
-AND DECLLABELS(X)
-{
-       LET B = DVECS
-       SCANLABELS(X)
-       CHECKDISTINCT(B, DVECS)
-       DVECE := DVECS
-}
-
-AND CHECKDISTINCT(E, S)
-{
-       UNTIL E=S DO
-          { LET P = E + 3
-             AND N = DVEC!E
-             WHILE P<S DO
-                { IF DVEC!P=N DO TRANSREPORT(142, N)
-                   P := P + 3  }
-             E := E + 3  }
-}
-
-AND ADDNAME(N, P, A)
-{
-    IF DVECS>=DVECT DO TRANSREPORT(143, CURRENTBRANCH)
-    DVEC!DVECS, DVEC!(DVECS+1), DVEC!(DVECS+2) := N, P, A
-    DVECS := DVECS + 3
-}
-
-AND CELLWITHNAME(N)
-{
-    LET X = DVECE
-
-    X := X - 3 REPEATUNTIL X=0 \/ DVEC!X=N
-
-    RESULTIS X
-}
-
-AND SCANLABELS(X)
+LET SCANLABELS(X)
 {
     UNLESS X=0 SWITCHON H1!X INTO
 
@@ -416,19 +381,42 @@ AND SCANLABELS(X)
             RETURN    }
 }
 
-AND TRANSDEF(X)
+LET DECLLABELS(X)
 {
-        TRANSDYNDEFS(X)
-        IF STATDEFS(X) DO
-           { LET L, S= NEXTPARAM(), SSP
-              COMPJUMP(L)
-              TRANSSTATDEFS(X)
-              SSP := S
-              OUT2(S.STACK, SSP)
-              COMPLAB(L)  }
+       LET B = DVECS
+       SCANLABELS(X)
+       CHECKDISTINCT(B, DVECS)
+       DVECE := DVECS
 }
 
-AND TRANSDYNDEFS(X)
+LET CHECKDISTINCT(E, S)
+{
+       UNTIL E=S DO
+          {  LET P = E + 3
+             LET N = DVEC!E
+             WHILE P<S DO
+                { IF DVEC!P=N DO TRANSREPORT(142, N)
+                   P := P + 3  }
+             E := E + 3  }
+}
+
+LET ADDNAME(N, P, A)
+{
+    IF DVECS>=DVECT DO TRANSREPORT(143, CURRENTBRANCH)
+    DVEC!DVECS, DVEC!(DVECS+1), DVEC!(DVECS+2) := N, P, A
+    DVECS := DVECS + 3
+}
+
+LET CELLWITHNAME(N)
+{
+    LET X = DVECE
+
+    X := X - 3 REPEATUNTIL X=0 \/ DVEC!X=N
+
+    RESULTIS X
+}
+
+LET TRANSDYNDEFS(X)
 {
     SWITCHON H1!X INTO {
         CASE S.AND:
@@ -448,7 +436,7 @@ AND TRANSDYNDEFS(X)
         DEFAULT: RETURN  }
 }
 
-AND TRANSSTATDEFS(X)
+LET TRANSSTATDEFS(X)
 {
     SWITCHON H1!X INTO {
         CASE S.AND:
@@ -458,8 +446,8 @@ AND TRANSSTATDEFS(X)
 
         CASE S.FNDEF: CASE S.RTDEF:
          {   LET A, B, C = DVECE, DVECS, DVECP
-             AND BL, LL = BREAKLABEL, LOOPLABEL
-             AND RL, CB = RESULTLABEL, CASEB
+             LET BL, LL = BREAKLABEL, LOOPLABEL
+             LET RL, CB = RESULTLABEL, CASEB
              BREAKLABEL, LOOPLABEL := -1, -1
              RESULTLABEL, CASEB := -1, -1
 
@@ -488,12 +476,24 @@ AND TRANSSTATDEFS(X)
     }
 }
 
-AND STATDEFS(X)
+LET STATDEFS(X)
 {
     RESULTIS H1!X=S.FNDEF \/ H1!X=S.RTDEF -> TRUE,
                           H1!X NE S.AND -> FALSE,
                          STATDEFS(H2!X) -> TRUE,
                                            STATDEFS(H3!X)
+}
+
+LET TRANSDEF(X)
+{
+        TRANSDYNDEFS(X)
+        IF STATDEFS(X) DO
+           { LET L, S= NEXTPARAM(), SSP
+              COMPJUMP(L)
+              TRANSSTATDEFS(X)
+              SSP := S
+              OUT2(S.STACK, SSP)
+              COMPLAB(L)  }
 }
 .
 
@@ -529,10 +529,10 @@ LET JUMPCOND(X, B, L)
                  RETURN     }
 }
 
-AND TRANSSWITCH(X)
+LET TRANSSWITCH(X)
 {
         LET P, B, DL = CASEP, CASEB, DEFAULTLABEL
-        AND ECL = ENDCASELABEL
+        LET ECL = ENDCASELABEL
         LET L = NEXTPARAM()
         ENDCASELABEL := NEXTPARAM()
         CASEB := CASEP
@@ -555,7 +555,7 @@ AND TRANSSWITCH(X)
         ENDCASELABEL := ECL
         CASEP, CASEB, DEFAULTLABEL := P, B, DL   }
 
-AND TRANSFOR(X)
+LET TRANSFOR(X)
 {
         LET A, B = DVECE, DVECS
         LET L, M = NEXTPARAM(), NEXTPARAM()
@@ -714,7 +714,7 @@ LET LOAD(X)
     }
 }
 
-AND LOADLV(X)
+LET LOADLV(X)
 {
     IF X=0 GOTO ERR
 
@@ -743,13 +743,13 @@ AND LOADLV(X)
             RETURN   }  }
 }
 
-AND LOADZERO()
+LET LOADZERO()
 {
     OUT2(S.LN, 0)
     SSP := SSP + 1
 }
 
-AND LOADLIST(X)
+LET LOADLIST(X)
 {
     UNLESS X=0 DO
     { UNLESS H1!X=S.COMMA DO { LOAD(X); RETURN  }
@@ -791,7 +791,7 @@ LET EVALCONST(X)
                     }
 }
 
-AND ASSIGN(X, Y)
+LET ASSIGN(X, Y)
 {
     IF X=0 \/ Y=0 DO
             { TRANSREPORT(110, CURRENTBRANCH)
@@ -822,7 +822,7 @@ AND ASSIGN(X, Y)
         DEFAULT: TRANSREPORT(109, CURRENTBRANCH)   }
 }
 
-AND TRANSNAME(X, P, G, L, N)
+LET TRANSNAME(X, P, G, L, N)
 {
     LET T = CELLWITHNAME(X)
     LET K, A = DVEC!(T+1), DVEC!(T+2)
@@ -855,7 +855,7 @@ LET COMPLAB(L)
     OUT2P(S.LAB, L)
 }
 
-AND COMPENTRY(N, L)
+LET COMPENTRY(N, L)
 {
     LET S = @N!2
     OUT3P(S.ENTRY, getbyte(S, 0), L)
@@ -863,56 +863,56 @@ AND COMPENTRY(N, L)
     WRC('*S')
 }
 
-AND COMPDATALAB(L)
+LET COMPDATALAB(L)
 {
     OUT2P(S.DATALAB, L)
 }
 
-AND COMPJUMP(L)
+LET COMPJUMP(L)
 {
     OUT2P(S.JUMP, L)
 }
 
-AND OUT1(X)
+LET OUT1(X)
 {
     WRITEOP(X); WRC('*S')
 }
 
-AND OUT2(X, Y)
+LET OUT2(X, Y)
 {
     WRITEOP(X); WRC('*S')
     WRN(Y); WRC('*S')
 }
 
-AND OUT2P(X, Y)
+LET OUT2P(X, Y)
 {
     WRITEOP(X); WRC('*S'); WRC('L')
     WRN(Y); WRC('*S')
 }
 
-AND OUT3P(X, Y, Z)
+LET OUT3P(X, Y, Z)
 {
     WRITEOP(X); WRC('*S')
     WRN(Y); WRC('*S'); WRC('L')
     WRN(Z); WRC('*S')
 }
 
-AND OUTN(N)
+LET OUTN(N)
 {
     WRN(N)
 }
 
-AND OUTL(X)
+LET OUTL(X)
 {
     WRC('*S'); WRC('L'); WRN(X); WRC('*S')
 }
 
-AND OUTC(X)
+LET OUTC(X)
 {
     WRN(CHARCODE(X)); WRC('*S')
 }
 
-AND WRITEOP(X)
+LET WRITEOP(X)
 {
     LET S = 0
 
@@ -990,24 +990,24 @@ AND WRITEOP(X)
         WRC(getbyte(S, I))
 }
 
-AND WRN(N)
+LET WRN(N)
 {
     IF N<0 DO { WRC('-'); N := - N  }
     WRPN(N)
 }
 
-AND WRPN(N)
+LET WRPN(N)
 {
     IF N>9 DO WRPN(N/10)
     WRC(N REM 10 + '0')
 }
 
-AND ENDOCODE()
+LET ENDOCODE()
 {
     wrch('*N'); OCOUNT := 0
 }
 
-AND WRC(CH)
+LET WRC(CH)
 {
     OCOUNT := OCOUNT + 1
     IF OCOUNT>62 /\ CH='*S' DO {
