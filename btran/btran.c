@@ -1694,7 +1694,7 @@ void readnumber(radix)
 
     decval = d;
     if (d >= radix)
-        caereport(33);
+        caereport(33);          // error in number
 
     for (;;) {
         rch();
@@ -1727,7 +1727,7 @@ int *newvec(n)
     treep = treep - n - 1;
     if (treep <= treevec) {
         reportmax = 0;
-        caereport(98);
+        caereport(98);          // program too large
     }
     return treep;
 }
@@ -1773,7 +1773,7 @@ void performget()
 {
     nextsymb();
     if (symb != S_STRING)
-        caereport(97);
+        caereport(97);          // string or number expected
 
     if (option[5])
         return;
@@ -1787,7 +1787,7 @@ void performget()
     if (sourcestream == 0)
         sourcestream = findlibinput(wordv);
     if (sourcestream == 0)
-        caereport(96);
+        caereport(96);          // no input
     rch();
 }
 
@@ -1837,15 +1837,8 @@ next:
         }
         return;
 
-    case '$':
-        rch();
-        if (ch != '(' && ch != ')')
-            caereport(91);
-        symb = (ch == '(') ? S_LSECT : S_RSECT;
-        rdtag('$');
-        lookupword();
-        return;
-
+    case '{': symb = S_LSECT; goto L;
+    case '}': symb = S_RSECT; goto L;
     case '[':
     case '(': symb = S_LPAREN; goto L;
     case ']':
@@ -1873,7 +1866,7 @@ next:
             readnumber(16);
             return;
         }
-        caereport(33);
+        caereport(33);          // error in number
 
     case '?': symb = S_QUERY;     goto L;
     case '+': symb = S_PLUS;      goto L;
@@ -1912,7 +1905,7 @@ next:
                 rch();
             }
         }
-        caereport(63);
+        caereport(63);          // '*/' missing
 comment:
         do {
             rch();
@@ -1991,7 +1984,7 @@ comment:
             rch();
             if (ch == quote || charp == 255) {
                 if (ch != quote)
-                    caereport(95);
+                    caereport(95);      // string too long
                 if (charp == 1 && ch == '\'') {
                     symb = S_NUMBER;
                     goto L;
@@ -2013,7 +2006,7 @@ comment:
                         rch();
                     } while (ch == ' ' || ch == '\t');
                     if (ch != '*')
-                        caereport(34);
+                        caereport(34);  // bad string
                     continue;
                 }
                 if (ch == 'T') ch = '\t';
@@ -2043,7 +2036,7 @@ comment:
 
     default:
         ch = ' ';
-        caereport(94);
+        caereport(94);          // illegal character
         rch();
         goto next;
     }
@@ -2090,20 +2083,13 @@ void checkfor(item, n)
 int *rdsect(func)
     int *(*func)();
 {
-    int *tag = wordnode;
     int *a = 0;
 
-    checkfor(S_LSECT, 6);
+    checkfor(S_LSECT, 6);       // '{' expected
     a = func();
     if (symb != S_RSECT)
-        caereport(7);
-
-    if (tag == wordnode)
-        nextsymb();
-    else if (wordnode == nulltag) {
-        symb = 0;
-        caereport(9);
-    }
+        caereport(7);           // '}' expected
+    nextsymb();
     return a;
 }
 
@@ -2111,7 +2097,7 @@ int *rname()
 {
     int *a = wordnode;
 
-    checkfor(S_NAME, 8);
+    checkfor(S_NAME, 8);        // name expected
     return a;
 }
 
@@ -2226,7 +2212,7 @@ int *rbcom()
         }
         if (symb == S_COLON) {
             if (H1[a] != S_NAME)
-                caereport(50);
+                caereport(50);  // error in label
             nextsymb();
             return list4(S_COLON, a, rbcom(), 0);
         }
@@ -2234,7 +2220,7 @@ int *rbcom()
             H1[a] = S_RTAP;
             return a;
         }
-        caereport(51);
+        caereport(51);          // error in command
         return a;
 
     case S_GOTO: case S_RESULTIS:
@@ -2253,7 +2239,7 @@ int *rbcom()
         a = rexp(0);
         ignore(S_DO);
         b = rcom();
-        checkfor(S_OR, 54);
+        checkfor(S_OR, 54);     // 'or' expected
         return list4(S_TEST, a, b, rcom());
 
     case S_FOR: {
@@ -2262,9 +2248,9 @@ int *rbcom()
         int *k = 0;
         nextsymb();
         a = rname();
-        checkfor(S_EQ, 57);
+        checkfor(S_EQ, 57);     // '=' expected
         i = rexp(0);
-        checkfor(S_TO, 58);
+        checkfor(S_TO, 58);     // 'to' expected
         j = rexp(0);
         if (symb == S_BY) {
             nextsymb();
@@ -2282,18 +2268,18 @@ int *rbcom()
     case S_SWITCHON:
         nextsymb();
         a = rexp(0);
-        checkfor(S_INTO, 60);
+        checkfor(S_INTO, 60);   // 'into' expected
         return list3(S_SWITCHON, a, rdsect(rdseq));
 
     case S_CASE:
         nextsymb();
         a = rexp(0);
-        checkfor(S_COLON, 61);
+        checkfor(S_COLON, 61);  // ':' expected
         return list3(S_CASE, a, rbcom());
 
     case S_DEFAULT:
         nextsymb();
-        checkfor(S_COLON, 62);
+        checkfor(S_COLON, 62);  // ':' expected
         return list2(S_DEFAULT, rbcom());
 
     case S_LSECT:
@@ -2306,7 +2292,7 @@ int *rcom()
     int *a = rbcom();
 
     if (a == 0)
-        caereport(51);
+        caereport(51);          // error in command
 
     while (symb == S_REPEAT || symb == S_REPEATWHILE || symb == S_REPEATUNTIL)
     {
@@ -2328,7 +2314,7 @@ int *rbexp()
 
     switch (symb) {
     default:
-        caereport(32);
+        caereport(32);          // error in expression
 
     case S_QUERY:
         nextsymb();
@@ -2357,7 +2343,7 @@ int *rbexp()
     case S_LPAREN:
         nextsymb();
         a = rexp(0);
-        checkfor(S_RPAREN, 15);
+        checkfor(S_RPAREN, 15); // ')' missing
         return a;
 
     case S_VALOF:
@@ -2416,7 +2402,7 @@ L:
         b = 0;
         if (symb != S_RPAREN)
             b = rexplist();
-        checkfor(S_RPAREN, 19);
+        checkfor(S_RPAREN, 19); // ')' missing
         a = list3(S_FNAP, a, b);
         goto L;
 
@@ -2475,7 +2461,7 @@ L:
             return a;
         nextsymb();
         b = rexp(0);
-        checkfor(S_COMMA, 30);
+        checkfor(S_COMMA, 30);  // ',' missing
         a = list4(S_COND, a, b, rexp(0));
         goto L;
 LASSOC:
@@ -2507,7 +2493,7 @@ int *rdcdefs()
         if (symb == S_EQ || symb == S_COLON)
             nextsymb();
         else
-            caereport(45);
+            caereport(45);      // ???
 
         *ptr = (int) list4(S_CONSTDEF, 0, b, rexp(0));
         ptr = &H2[(int*) *ptr];
@@ -2542,7 +2528,7 @@ int *rdef()
             caereport(40);
         if (symb == S_NAME)
             a = rnamelist();
-        checkfor(S_RPAREN, 41);
+        checkfor(S_RPAREN, 41); // ')' missing
 
         if (symb == S_BE) {
             nextsymb();
