@@ -1,15 +1,15 @@
 //  LIBHDR
 
-MANIFEST $(
+MANIFEST {
     ENDSTREAMCH     = -1
     BYTESPERWORD    = 4
     BITSPERWORD     = 32
     MAXINT          = #X7FFFFFFF
     MININT          = #X80000000
     FIRSTFREEGLOBAL = 150
-$)
+}
 
-GLOBAL $(
+GLOBAL {
     start : 1
 
     selectinput  : 11
@@ -60,4 +60,4 @@ GLOBAL $(
     putbyte : 86
 
     result2 : 91
-$)
+}

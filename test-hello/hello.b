@@ -1,4 +1,4 @@
-GLOBAL $(
+GLOBAL {
     start        : 1
 
     // Built-in functions of INTCODE interpreter
@@ -25,14 +25,14 @@ GLOBAL $(
 
     getbyte      : 85
     putbyte      : 86
-$)
+}
 
 LET writes(s) BE
-$(
+{
     FOR i = 1 TO getbyte(s, 0) DO wrch(getbyte(s, i))
-$)
+}
 
 AND start() BE
-$(
+{
     writes("Hello, World!*N ")
-$)
+}

@@ -3,7 +3,7 @@
 // written by M. Richards originally to test the
 // CII 10070 code-generator.
 //
-GLOBAL $(
+GLOBAL {
     start        : 1
 
     // Built-in functions of INTCODE interpreter
@@ -30,9 +30,9 @@ GLOBAL $(
 
     getbyte      : 85
     putbyte      : 86
-$)
+}
 
-GLOBAL $(
+GLOBAL {
     f : 100
     g : 101
     h : 102
@@ -42,44 +42,44 @@ GLOBAL $(
     testcount : 106
     quiet : 107
     t : 108
-$)
+}
 
-STATIC $(
+STATIC {
     a = 10
     b = 11
     c = 12
     w = 0
-$)
+}
 
-MANIFEST $(
+MANIFEST {
     K0 = 0
     K1 = 1
     K2 = 2
-$)
+}
 
 LET writes(s) BE
-$(
+{
     FOR i = 1 TO getbyte(s, 0) DO wrch(getbyte(s, i))
-$)
+}
 
 AND writeoct(n, d) BE
-$(
+{
     IF d>1 DO
         writeoct(n>>3, d-1)
     wrch((n/\7)+'0')
-$)
+}
 
 AND writehex(n, d) BE
-$(
+{
     IF d>1 DO
         writehex(n>>4, d-1)
     wrch((n&15)!TABLE
         '0','1','2','3','4','5','6','7',
         '8','9','A','B','C','D','E','F')
-$)
+}
 
 AND writed(n, d) BE
-$(1
+{
     LET t = VEC 20
     AND i, k = 0, n
     IF n<0 DO
@@ -91,20 +91,20 @@ $(1
         wrch('-')
     FOR j = i-1 TO 0 BY -1 DO
         wrch(t!j+'0')
-$)1
+}
 
 AND writef(format, a, b, c, d, e, f, g, h, i, j, k) BE
-$(1
+{
     LET t = @a
 
-    FOR p = 1 TO getbyte(format, 0) DO $(2
+    FOR p = 1 TO getbyte(format, 0) DO {
         LET k = getbyte(format, p)
 
-        TEST k='%' THEN $(3
+        TEST k='%' THEN {
             LET f, q, n = 0, t!0, 0
             AND TYPE = getbyte(format, p+1)
             p := p + 1
-            SWITCHON TYPE INTO $(
+            SWITCHON TYPE INTO {
                 DEFAULT: wrch(TYPE); ENDCASE
 
                 CASE 'S': f := writes; GOTO L
@@ -119,37 +119,38 @@ $(1
                    n := '0'<=n<='9' -> n-'0', n-'A'+10
 
                 L: f(q, n); t := t + 1
-        $)3
+            }
+        }
         OR wrch(k)
-    $)2
-$)1
+    }
+}
 
 LET t(x, y) = VALOF
-$(
+{
     testno := testno + 1
     testcount := testcount + 1
     IF x=y & quiet RESULTIS y
     writef("%I3 %I5 ", testno, y)
     TEST x=y THEN
         writes("OK*N")
-    ELSE $(
+    ELSE {
         writef("FAILED %X8(%N) %X8(%N)*N", x, x, y, y)
         failcount := failcount + 1
-    $)
+    }
     RESULTIS y
-$)
+}
 
 LET t1(a,b,c,D,E,f,g) = t(a+b+c+D+E+f, g)
 
 LET start(parm) BE
-$(1
+{
     LET v1 = VEC 200
     AND v2 = VEC 200
     tester(0, 1, 2, v1, v2)
-$)1
+}
 
 AND tester(x, y, z, v1, v2) BE
-$(1
+{
     writef("*NCGTESTER ENTERED *N*N")
 
     //
@@ -250,12 +251,12 @@ $(1
     t(x, 16)
     x := 15
 
-    $(
+    {
         LET w = VEC 20
         GOTO L1
     L2: writes("GOTO ERROR*N")
         failcount := failcount+1
-    $)
+    }
 
 L1: a := VALOF RESULTIS 11
     t(a, 11)
@@ -265,17 +266,17 @@ L1: a := VALOF RESULTIS 11
     //
     testno := 100
 
-    $(
+    {
         LET v1 = VEC 1
         v1!0, v1!1 := -1, -2
-        $(
+        {
             LET v2 = VEC 10
             FOR i = 0 TO 10 DO
                 v2!i := -i
             t(v2!5, -5)
-        $)
+        }
         t(v1!1, -2)
-    $)
+    }
 
     x := x + t(x,15, t(f, 105), t(a, 11)) - 15
     t(x, 15)
@@ -299,12 +300,12 @@ L1: a := VALOF RESULTIS 11
     //
     testno := 200
 
-    $(SW
+    {
         LET s1, s1f = 0, 0
         AND s2, s2f = 0, 0
 
-        FOR i = -200 TO 200 DO $(
-            SWITCHON i INTO $(
+        FOR i = -200 TO 200 DO {
+            SWITCHON i INTO {
             DEFAULT: s1 := s1+1000; ENDCASE
             CASE -1000: s1f := s1f + i; ENDCASE
             CASE -200: s1 := s1 + 1
@@ -339,9 +340,9 @@ L1: a := VALOF RESULTIS 11
             CASE   61: s1 := s1 + 1
             CASE -171: s1 := s1 + 1
             CASE -162: s1 := s1 + 1
-            $)
+            }
 
-            SWITCHON i+10000 INTO $(
+            SWITCHON i+10000 INTO {
             DEFAULT: s2 := s2+1000; ENDCASE
             CASE 10020: s2 := s2 + 1
             CASE 10021: s2 := s2 + 1
@@ -359,13 +360,13 @@ L1: a := VALOF RESULTIS 11
             CASE 10013: s2 := s2 + 1
             CASE 10014: s2 := s2 + 1
             CASE 10015: s2 := s2 + 1
-            $)
-        $)
+            }
+        }
         t(s1f, 0)
         t(s2f, 0)
         t(s1, (401-32)*1000 + 32*(32+1)/2)
         t(s2, (401-16)*1000 + 16*(16+1)/2)
-    $)SW
+    }
 
     //
     // Test function calling
@@ -441,4 +442,4 @@ L1: a := VALOF RESULTIS 11
 
     writef("*N%N TESTS COMPLETED, %N FAILURE(S)*N*N",
             testcount, failcount)
-$)1
+}
