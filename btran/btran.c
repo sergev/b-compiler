@@ -146,8 +146,8 @@ int *rdblockbody(void);
 #define S_DEFAULT	72
 #define S_SEQ	        73
 #define S_LET	        74
-#define S_MANIFEST	75
-#define S_GLOBAL	76
+#define S_DEFINE	75
+#define S_EXTERN	76
 #define S_LOCAL	        77
 #define S_LABEL	        78
 #define S_STATIC	79
@@ -319,7 +319,7 @@ void trnmessage(n)
     case 101:
     case 105: s = "ILLEGAL USE OF CASE OR DEFAULT"; break;
     case 106: s = "TWO CASES WITH SAME CONSTANT"; break;
-    case 144: s = "TOO MANY GLOBALS"; break;
+    case 144: s = "TOO MANY EXTERNS"; break;
     case 142: s = "NAME DECLARED TWICE"; break;
     case 143: s = "TOO MANY NAMES DECLARED"; break;
     case 115: s = "NAME NOT DECLARED"; break;
@@ -375,7 +375,7 @@ void plist(x, n, d)
     case S_WHILE: case S_UNTIL: case S_REPEATWHILE:
     case S_REPEATUNTIL:
     case S_SWITCHON: case S_CASE: case S_SEQ: case S_LET:
-    case S_MANIFEST: case S_STATIC: case S_GLOBAL:
+    case S_DEFINE: case S_STATIC: case S_EXTERN:
         size = size + 1;
 
     case S_LV: case S_RV: case S_NEG: case S_NOT:
@@ -487,7 +487,7 @@ void writeop(x)
     case S_FINISH:   s = "FINISH";   break;
 
     case S_SWITCHON: s = "SWITCHON"; break;
-    case S_GLOBAL:   s = "GLOBAL";   break;
+    case S_EXTERN:   s = "GLOBAL";   break;
     case S_DATALAB:  s = "DATALAB";  break;
     case S_ITEML:    s = "ITEML";    break;
     case S_ITEMN:    s = "ITEMN";    break;
@@ -621,10 +621,10 @@ void declstat(x, l)
     int t = cellwithname(x);
     int m;
 
-    if (dvec[t+1] == S_GLOBAL) {
+    if (dvec[t+1] == S_EXTERN) {
         int n = dvec[t+2];
 
-        addname(x, S_GLOBAL, n);
+        addname(x, S_EXTERN, n);
         if (globdecls >= globdeclt)
             transreport(144, x);
         globdecl[globdecls] = n;
@@ -762,7 +762,7 @@ void transname(x, p, g, l, n)
         out2(p, a);
         return;
 
-    case S_GLOBAL:
+    case S_EXTERN:
         out2(g, a);
         return;
 
@@ -1093,15 +1093,15 @@ next:
         return;
     }
     case S_STATIC:
-    case S_GLOBAL:
-    case S_MANIFEST: {
+    case S_EXTERN:
+    case S_DEFINE: {
         int a = dvece;
         int b = dvecs;
         int s = ssp;
         int op = H1[x];
         int *y = (int*) H2[x];
 
-        if (op == S_MANIFEST)
+        if (op == S_DEFINE)
             op = S_NUMBER;
 
         while (y != 0) {
@@ -1553,7 +1553,7 @@ void compileae(x)
     out2(S_STACK, ssp);
     decllabels(x);
     trans(x);
-    out2(S_GLOBAL, globdecls/2);
+    out2(S_EXTERN, globdecls/2);
 
     for (i = 0; i < globdecls; i = i + 2) {
         outn(globdecl[i]);
@@ -2562,9 +2562,9 @@ int *rdtopblock()
     ignore(S_SEMICOLON);
 
     switch (symb) {
-    case S_MANIFEST:
+    case S_DEFINE:
     case S_STATIC:
-    case S_GLOBAL: {
+    case S_EXTERN: {
         int op = symb;
         nextsymb();
         a = rdsect(rdcdefs);
@@ -2603,6 +2603,7 @@ void d(s, item)
 void declsyswords()
 {
     d("AND", S_AND);
+    d("auto", S_AUTO);
 
     d("BREAK", S_BREAK);
     d("BY", S_BY);
@@ -2611,6 +2612,7 @@ void declsyswords()
 
     d("DO", S_DO);
     d("DEFAULT", S_DEFAULT);
+    d("define", S_DEFINE);
 
     d("EQ", S_EQ);
     d("EQV", S_EQV);
@@ -2624,13 +2626,12 @@ void declsyswords()
     d("GOTO", S_GOTO);
     d("GE", S_GE);
     d("GR", S_GR);
-    d("GLOBAL", S_GLOBAL);
+    d("extern", S_EXTERN);
     d("GET", S_GET);
 
     d("IF", S_IF);
     d("INTO", S_INTO);
 
-    d("auto", S_AUTO);
     d("LV", S_LV);
     d("LE", S_LE);
     d("LS", S_LS);
@@ -2638,8 +2639,6 @@ void declsyswords()
     d("LOGAND", S_LOGAND);
     d("LOOP", S_LOOP);
     d("LSHIFT", S_LSHIFT);
-
-    d("MANIFEST", S_MANIFEST);
 
     d("NE", S_NE);
     d("NOT", S_NOT);
@@ -2657,7 +2656,7 @@ void declsyswords()
     d("REPEATUNTIL", S_REPEATUNTIL);
 
     d("SWITCHON", S_SWITCHON);
-    d("STATIC", S_STATIC);
+    d("static", S_STATIC);
 
     d("TO", S_TO);
     d("TEST", S_TEST);

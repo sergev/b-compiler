@@ -1,6 +1,6 @@
 //  LIBHDR
 
-MANIFEST {
+define {
     ENDSTREAMCH     = -1
     BYTESPERWORD    = 4
     BITSPERWORD     = 32
@@ -9,7 +9,7 @@ MANIFEST {
     FIRSTFREEGLOBAL = 150
 }
 
-GLOBAL {
+extern {
     start : 1
 
     selectinput  : 11

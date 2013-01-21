@@ -3,7 +3,7 @@
 // written by M. Richards originally to test the
 // CII 10070 code-generator.
 //
-GLOBAL {
+extern {
     start        : 1
 
     // Built-in functions of INTCODE interpreter
@@ -32,7 +32,7 @@ GLOBAL {
     putbyte      : 86
 }
 
-GLOBAL {
+extern {
     f : 100
     g : 101
     h : 102
@@ -44,14 +44,14 @@ GLOBAL {
     t : 108
 }
 
-STATIC {
+static {
     a = 10
     b = 11
     c = 12
     w = 0
 }
 
-MANIFEST {
+define {
     K0 = 0
     K1 = 1
     K2 = 2

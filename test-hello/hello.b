@@ -1,4 +1,4 @@
-GLOBAL {
+extern {
     start        : 1
 
     // Built-in functions of INTCODE interpreter
