@@ -57,20 +57,20 @@ MANIFEST {
     K2 = 2
 }
 
-LET writes(s)
+writes(s)
 {
     FOR i = 1 TO getbyte(s, 0) DO
         wrch(getbyte(s, i))
 }
 
-LET writeoct(n, d)
+writeoct(n, d)
 {
     IF d>1 DO
         writeoct(n>>3, d-1)
     wrch((n/\7)+'0')
 }
 
-LET writehex(n, d)
+writehex(n, d)
 {
     IF d>1 DO
         writehex(n>>4, d-1)
@@ -79,10 +79,11 @@ LET writehex(n, d)
         '8','9','A','B','C','D','E','F')
 }
 
-LET writed(n, d)
+writed(n, d)
 {
-    LET t = VEC 20
-    LET i, k = 0, n
+    auto t = VEC 20
+    auto i, k = 0, n
+
     IF n<0 DO
         d, k := d-1, -n
     t!i, k, i := k REM 10, k/10, i+1 REPEATUNTIL k=0
@@ -94,16 +95,16 @@ LET writed(n, d)
         wrch(t!j+'0')
 }
 
-LET writef(format, a, b, c, d, e, f, g, h, i, j, k)
+writef(format, a, b, c, d, e, f, g, h, i, j, k)
 {
-    LET t = @a
+    auto t = @a
 
     FOR p = 1 TO getbyte(format, 0) DO {
-        LET k = getbyte(format, p)
+        auto k = getbyte(format, p)
 
         TEST k='%' THEN {
-            LET f, q, n = 0, t!0, 0
-            LET type = getbyte(format, p+1)
+            auto f, q, n = 0, t!0, 0
+            auto type = getbyte(format, p+1)
             p := p + 1
             SWITCHON type INTO {
                 DEFAULT: wrch(type); ENDCASE
@@ -127,7 +128,7 @@ LET writef(format, a, b, c, d, e, f, g, h, i, j, k)
     RETURN
 }
 
-LET t(x, y)
+t(x, y)
 {
     testno := testno + 1
     testcount := testcount + 1
@@ -144,12 +145,12 @@ LET t(x, y)
     RESULTIS y
 }
 
-LET t1(a,b,c,D,E,f,g)
+t1(a,b,c,D,E,f,g)
 {
     RESULTIS t(a+b+c+D+E+f, g)
 }
 
-LET tester(x, y, z, v1, v2)
+tester(x, y, z, v1, v2)
 {
     writef("*NCGTESTER ENTERED *N*N")
 
@@ -252,7 +253,7 @@ LET tester(x, y, z, v1, v2)
     x := 15
 
     {
-        LET w = VEC 20
+        auto w = VEC 20
         GOTO L1
     L2: writes("GOTO ERROR*N")
         failcount := failcount+1
@@ -266,10 +267,10 @@ L1: a := 11
     testno := 100
 
     {
-        LET v1 = VEC 1
+        auto v1 = VEC 1
         v1!0, v1!1 := -1, -2
         {
-            LET v2 = VEC 10
+            auto v2 = VEC 10
             FOR i = 0 TO 10 DO
                 v2!i := -i
             t(v2!5, -5)
@@ -300,8 +301,8 @@ L1: a := 11
     testno := 200
 
     {
-        LET s1, s1f = 0, 0
-        LET s2, s2f = 0, 0
+        auto s1, s1f = 0, 0
+        auto s2, s2f = 0, 0
 
         FOR i = -200 TO 200 DO {
             SWITCHON i INTO {
@@ -426,9 +427,9 @@ L1: a := 11
             testcount, failcount)
 }
 
-LET start(parm)
+start(parm)
 {
-    LET v1 = VEC 200
-    LET v2 = VEC 200
+    auto v1 = VEC 200
+    auto v2 = VEC 200
     tester(0, 1, 2, v1, v2)
 }

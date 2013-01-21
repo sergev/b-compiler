@@ -135,6 +135,7 @@ int *rdblockbody(void);
 #define S_REPEAT	61
 #define S_REPEATWHILE	62
 #define S_REPEATUNTIL	63
+#define S_AUTO	        64
 #define S_LOOP	        65
 #define S_BREAK	        66
 #define S_RETURN	67
@@ -2526,20 +2527,54 @@ int *rdblockbody()
     ignore(S_SEMICOLON);
 
     switch (symb) {
+    case S_AUTO:
+        nextsymb();
+        a = rdef();
+recover:
+        a = list3(S_LET, a, rdblockbody());
+        break;
+
+    default:
+        a = rdseq();
+        if (symb != S_RSECT && symb != S_END)
+            caereport(51);      // error in command
+        break;
+
+    case S_RSECT: case S_END:
+        break;
+    }
+    rec_p = p;
+    rec_l = l;
+    return a;
+}
+
+int *rdtopblock()
+{
+    int *p = rec_p;
+    int *l = rec_l;
+    int *a = 0;
+    int jumpbuf [JUMPSZ];
+
+    rec_p = jumpbuf;
+    rec_l = &&recover;
+    setjump(rec_p, recover);
+
+    ignore(S_SEMICOLON);
+
+    switch (symb) {
     case S_MANIFEST:
     case S_STATIC:
     case S_GLOBAL: {
         int op = symb;
         nextsymb();
         a = rdsect(rdcdefs);
-        a = list3(op, a, rdblockbody());
+        a = list3(op, a, rdtopblock());
         break;
     }
-    case S_LET:
-        nextsymb();
+    case S_NAME:
         a = rdef();
 recover:
-        a = list3(S_LET, a, rdblockbody());
+        a = list3(S_LET, a, rdtopblock());
         break;
 
     default:
@@ -2595,7 +2630,7 @@ void declsyswords()
     d("IF", S_IF);
     d("INTO", S_INTO);
 
-    d("LET", S_LET);
+    d("auto", S_AUTO);
     d("LV", S_LV);
     d("LE", S_LE);
     d("LS", S_LS);
@@ -2689,7 +2724,7 @@ L:  nextsymb();
         goto L;
     }
 
-    a = rdblockbody();
+    a = rdtopblock();
     if (symb != S_END) {
         caereport(99);          // incorrect termination
         goto L;

@@ -13,14 +13,14 @@ GLOBAL {
     SAVESPACESIZE:282
 }
 
-LET COMP(V, TREEMAX)
+COMP(V, TREEMAX)
 {
-    LET B = VEC 63
+    auto B = VEC 63
     CHBUF := B
     {
         TREEP, TREEVEC := V+TREEMAX, V
         {
-            LET A = FORMTREE()
+            auto A = FORMTREE()
             IF A=0 BREAK
 
             writef("*NTREE SIZE %N*N", TREEMAX+TREEVEC-TREEP)
@@ -39,7 +39,7 @@ LET COMP(V, TREEMAX)
     } REPEAT
 }
 
-LET start(PARM)
+start(PARM)
 {
 SYSIN := input()
 SYSPRINT := output()
@@ -47,8 +47,8 @@ selectoutput(SYSPRINT)
 
 writef("*NBCPL %N*N", @start)
 
-{  LET OPT = VEC 20
-   LET TREESIZE = 5500
+{  auto OPT = VEC 20
+   auto TREESIZE = 5500
    OPTION := OPT
    SAVESPACESIZE := 2
    PPTRACE := FALSE
@@ -58,8 +58,8 @@ writef("*NBCPL %N*N", @start)
 SOURCESTREAM := findinput("OPTIONS")
 
 UNLESS SOURCESTREAM=0 DO
-{   LET CH = 0
-    LET N = 0
+{   auto CH = 0
+    auto N = 0
     selectinput(SOURCESTREAM)
     writes("OPTIONS  ")
 
@@ -112,16 +112,16 @@ IF OCODE=0 DO OCODE := SYSPRINT
 
 GET "SYNHDR"
 
-LET value(CH)
+value(CH)
 {
     RESULTIS '0'<=CH<='9' -> CH-'0',
              'A'<=CH<='F' -> CH-'A'+10,
                              100
 }
 
-LET readnumber(RADIX)
+readnumber(RADIX)
 {
-       LET D = value(CH)
+       auto D = value(CH)
        DECVAL := D
        IF D>=RADIX DO CAEREPORT(33)
 
@@ -131,7 +131,7 @@ LET readnumber(RADIX)
           DECVAL := RADIX*DECVAL + D  } REPEAT
 }
 
-LET NEXTSYMB()
+NEXTSYMB()
 {
     NLPENDING := FALSE
 NEXT:
@@ -256,7 +256,7 @@ NEXT:
                  RETURN
 
         CASE '*'':CASE '*"':
-             {   LET QUOTE = CH
+             {   auto QUOTE = CH
                  CHARP := 0
 
               { RCH()
@@ -318,7 +318,7 @@ NEXT:
 
 GET "SYNHDR"
 
-LET D(S, ITEM)
+D(S, ITEM)
 {
     unpackstring(S, CHARV)
     WORDSIZE := packstring(CHARV, WORDV)
@@ -326,7 +326,7 @@ LET D(S, ITEM)
     WORDNODE!0 := ITEM
 }
 
-LET DECLSYSWORDS()
+DECLSYSWORDS()
 {
     D("AND", S.AND)
 
@@ -403,10 +403,10 @@ LET DECLSYSWORDS()
     D("$", 0); NULLTAG := WORDNODE
 }
 
-LET LOOKUPWORD()
+LOOKUPWORD()
 {
-        LET HASHVAL = (WORDV!0+WORDV!WORDSIZE >> 1) REM NAMETABLESIZE
-        LET M = @NAMETABLE!HASHVAL
+        auto HASHVAL = (WORDV!0+WORDV!WORDSIZE >> 1) REM NAMETABLESIZE
+        auto M = @NAMETABLE!HASHVAL
 
   NEXT: WORDNODE := !M
         UNLESS WORDNODE=0 DO
@@ -427,10 +427,9 @@ LET LOOKUPWORD()
 
 //    LEX3
 
-
 GET "SYNHDR"
 
-LET RCH()
+RCH()
 {
        CH := rdch()
 
@@ -443,16 +442,16 @@ LET RCH()
        CHBUF!(CHCOUNT&63) := CH
 }
 
-LET wrchbuf()
+wrchbuf()
 {
        writes("*N...")
        FOR P = CHCOUNT-63 TO CHCOUNT DO
-                { LET K = CHBUF!(P&63)
+                { auto K = CHBUF!(P&63)
                    UNLESS K=0 DO wrch(K)  }
        newline()
 }
 
-LET RDTAG(X)
+RDTAG(X)
 {
         CHARP, CHARV!1 := 1, X
 
@@ -468,20 +467,20 @@ LET RDTAG(X)
         WORDSIZE := packstring(CHARV, WORDV)
 }
 
-LET append(D, S)
+append(D, S)
 {
-       LET ND = getbyte(D, 0)
-       LET NS = getbyte(S, 0)
+       auto ND = getbyte(D, 0)
+       auto NS = getbyte(S, 0)
        FOR I = 1 TO NS DO {
            ND := ND + 1
            putbyte(D, ND, getbyte(S, I)) }
        putbyte(D, 0, ND)
 }
 
-LET findlibinput(NAME)
+findlibinput(NAME)
 {
-       LET PATH = VEC 64
-       LET DIR = "/usr/lib/bcpl/"
+       auto PATH = VEC 64
+       auto DIR = "/usr/lib/bcpl/"
        TEST getbyte(DIR, 0) + getbyte(NAME, 0) > 255
        THEN RESULTIS 0
          OR { putbyte(PATH, 0, 0)
@@ -490,7 +489,7 @@ LET findlibinput(NAME)
                RESULTIS findinput(PATH) }
 }
 
-LET PERFORMGET()
+PERFORMGET()
 {
        NEXTSYMB()
        UNLESS SYMB=S.STRING THEN CAEREPORT(97)
@@ -516,7 +515,7 @@ LET PERFORMGET()
 
 GET "SYNHDR"
 
-LET NEWVEC(N)
+NEWVEC(N)
 {
        TREEP := TREEP - N - 1
        IF TREEP<=TREEVEC DO
@@ -525,51 +524,51 @@ LET NEWVEC(N)
         RESULTIS TREEP
 }
 
-LET LIST1(X)
+LIST1(X)
 {
-       LET P = NEWVEC(0)
+       auto P = NEWVEC(0)
        P!0 := X
        RESULTIS P
 }
 
-LET LIST2(X, Y)
+LIST2(X, Y)
 {
-        LET P = NEWVEC(1)
+        auto P = NEWVEC(1)
         P!0, P!1 := X, Y
         RESULTIS P
 }
 
-LET LIST3(X, Y, Z)
+LIST3(X, Y, Z)
 {
-        LET P = NEWVEC(2)
+        auto P = NEWVEC(2)
         P!0, P!1, P!2 := X, Y, Z
         RESULTIS P
 }
 
-LET LIST4(X, Y, Z, T)
+LIST4(X, Y, Z, T)
 {
-        LET P = NEWVEC(3)
+        auto P = NEWVEC(3)
         P!0, P!1, P!2, P!3 := X, Y, Z, T
         RESULTIS P
 }
 
-LET LIST5(X, Y, Z, T, U)
+LIST5(X, Y, Z, T, U)
 {
-        LET P = NEWVEC(4)
+        auto P = NEWVEC(4)
         P!0, P!1, P!2, P!3, P!4 := X, Y, Z, T, U
         RESULTIS P
 }
 
-LET LIST6(X, Y, Z, T, U, V)
+LIST6(X, Y, Z, T, U, V)
 {
-        LET P = NEWVEC(5)
+        auto P = NEWVEC(5)
         P!0, P!1, P!2, P!3, P!4, P!5 := X, Y, Z, T, U, V
         RESULTIS P
 }
 
-LET caemessage(n, a)
+caemessage(n, a)
 {
-    LET s = 0;
+    auto s = 0;
 
     SWITCHON n INTO {
         DEFAULT:  writen(n); RETURN
@@ -606,7 +605,7 @@ LET caemessage(n, a)
     writef(s, a)
 }
 
-LET CAEREPORT(N, A)
+CAEREPORT(N, A)
 {
         REPORTCOUNT := REPORTCOUNT + 1
         writef("*NSYNTAX ERROR NEAR LINE %N:  ", LINECOUNT)
@@ -623,21 +622,21 @@ LET CAEREPORT(N, A)
         longjump(REC.P, REC.L)
 }
 
-LET FORMTREE()
+FORMTREE()
 {
     CHCOUNT := 0
     FOR I = 0 TO 63 DO CHBUF!I := 0
 
-     { LET V = VEC 10   // FOR 'GET' STREAMS
+     { auto V = VEC 10   // FOR 'GET' STREAMS
         GETV, GETP, GETT := V, 0, 10
 
-     { LET V = VEC 100
+     { auto V = VEC 100
         WORDV := V
 
-     { LET V = VEC 256
+     { auto V = VEC 256
         CHARV, CHARP := V, 0
 
-     { LET V = VEC 100
+     { auto V = VEC 100
         NAMETABLE, NAMETABLESIZE := V, 100
         FOR I = 0 TO 100 DO NAMETABLE!I := 0
 
@@ -656,7 +655,7 @@ LET FORMTREE()
                 IF SYMB=S.END RESULTIS 0
                 GOTO L  }
 
-     { LET A = RDBLOCKBODY()
+     { auto A = RDBLOCKBODY()
         UNLESS SYMB=S.END DO { CAEREPORT(99); GOTO L  }
 
         RESULTIS A        }
@@ -665,13 +664,12 @@ LET FORMTREE()
 
 //    CAE1
 
-
 GET "SYNHDR"
 
-LET RDBLOCKBODY()
+RDBLOCKBODY()
 {
-    LET P, L = REC.P, REC.L
-    LET A = 0
+    auto P, L = REC.P, REC.L
+    auto A = 0
 
     REC.P, REC.L := level(), RECOVER
 
@@ -681,7 +679,7 @@ LET RDBLOCKBODY()
         CASE S.MANIFEST:
         CASE S.STATIC:
         CASE S.GLOBAL:
-            {  LET OP = SYMB
+            {  auto OP = SYMB
                 NEXTSYMB()
                 A := RDSECT(RDCDEFS)
                 A := LIST3(OP, A, RDBLOCKBODY())
@@ -706,20 +704,20 @@ LET RDBLOCKBODY()
                RESULTIS A   }
 }
 
-LET RDSEQ()
+RDSEQ()
 {
-       LET A = 0
+       auto A = 0
        IGNORE(S.SEMICOLON)
        A := RCOM()
        IF SYMB=S.RSECT \/ SYMB=S.END RESULTIS A
        RESULTIS LIST3(S.SEQ, A, RDSEQ())
 }
 
-LET RDCDEFS()
+RDCDEFS()
 {
-        LET A, B = 0, 0
-        LET PTR = @A
-        LET P, L = REC.P, REC.L
+        auto A, B = 0, 0
+        auto PTR = @A
+        auto P, L = REC.P, REC.L
         REC.P, REC.L := level(), RECOVER
 
         { B := RNAME()
@@ -733,9 +731,9 @@ LET RDCDEFS()
         RESULTIS A
 }
 
-LET RDSECT(R)
+RDSECT(R)
 {
-        LET TAG, A = WORDNODE, 0
+        auto TAG, A = WORDNODE, 0
         CHECKFOR(S.LSECT, 6)
         A := R()
         UNLESS SYMB=S.RSECT DO CAEREPORT(7)
@@ -747,27 +745,27 @@ LET RDSECT(R)
         RESULTIS A
 }
 
-LET RNAMELIST()
+RNAMELIST()
 {
-        LET A = RNAME()
+        auto A = RNAME()
         UNLESS SYMB=S.COMMA RESULTIS A
         NEXTSYMB()
         RESULTIS LIST3(S.COMMA, A, RNAMELIST())
 }
 
-LET RNAME()
+RNAME()
 {
-       LET A = WORDNODE
+       auto A = WORDNODE
        CHECKFOR(S.NAME, 8)
        RESULTIS A
 }
 
-LET IGNORE(ITEM)
+IGNORE(ITEM)
 {
     IF SYMB=ITEM DO NEXTSYMB()
 }
 
-LET CHECKFOR(ITEM, N)
+CHECKFOR(ITEM, N)
 {
     UNLESS SYMB=ITEM DO CAEREPORT(N)
     NEXTSYMB()
@@ -778,9 +776,9 @@ LET CHECKFOR(ITEM, N)
 
 GET "SYNHDR"
 
-LET RBEXP()
+RBEXP()
 {
-    LET A, OP = 0, SYMB
+    auto A, OP = 0, SYMB
 
     SWITCHON SYMB INTO {
         DEFAULT:
@@ -837,13 +835,13 @@ LET RBEXP()
                       RESULTIS LIST2(S.TABLE, REXPLIST())   }
 }
 
-LET REXP(N)
+REXP(N)
 {
-    LET A = RBEXP()
+    auto A = RBEXP()
 
-    LET B, C, P, Q = 0, 0, 0, 0
+    auto B, C, P, Q = 0, 0, 0, 0
 
- L: {   LET OP = SYMB
+ L: {   auto OP = SYMB
 
         IF NLPENDING RESULTIS A
 
@@ -902,12 +900,12 @@ LET REXP(N)
                 GOTO L                     }     }
 }
 
-LET REXPLIST()
+REXPLIST()
 {
-        LET A = 0
-        LET PTR = @A
+        auto A = 0
+        auto PTR = @A
 
-     { LET B = REXP(0)
+     { auto B = REXP(0)
         UNLESS SYMB=S.COMMA DO { !PTR := B
                                   RESULTIS A  }
         NEXTSYMB()
@@ -915,13 +913,13 @@ LET REXPLIST()
         PTR := @H3!(!PTR)  } REPEAT
 }
 
-LET RDEF()
+RDEF()
 {
-    LET N = RNAMELIST()
+    auto N = RNAMELIST()
 
     SWITCHON SYMB INTO {
         CASE S.LPAREN:
-             { LET A = 0
+             { auto A = 0
                 NEXTSYMB()
                 UNLESS H1!N=S.NAME DO CAEREPORT(40)
                 IF SYMB=S.NAME DO A := RNAMELIST()
@@ -953,9 +951,9 @@ LET RDEF()
 
 GET "SYNHDR"
 
-LET RBCOM()
+RBCOM()
 {
-    LET A, B, OP = 0, 0, SYMB
+    auto A, B, OP = 0, 0, SYMB
 
     SWITCHON SYMB INTO {
         DEFAULT: RESULTIS 0
@@ -1002,7 +1000,7 @@ LET RBCOM()
                 RESULTIS LIST4(S.TEST, A, B, RCOM())
 
         CASE S.FOR:
-            {  LET I, J, K = 0, 0, 0
+            {  auto I, J, K = 0, 0, 0
                 NEXTSYMB()
                 A := RNAME()
                 CHECKFOR(S.EQ, 57)
@@ -1041,15 +1039,15 @@ LET RBCOM()
                 RESULTIS RDSECT(RDBLOCKBODY)   }
 }
 
-LET RCOM()
+RCOM()
 {
-        LET A = RBCOM()
+        auto A = RBCOM()
 
         IF A=0 DO CAEREPORT(51)
 
         WHILE SYMB=S.REPEAT \/ SYMB=S.REPEATWHILE \/
                     SYMB=S.REPEATUNTIL DO
-                  { LET OP = SYMB
+                  { auto OP = SYMB
                      NEXTSYMB()
                      TEST OP=S.REPEAT
                          THEN A := LIST2(OP, A)
@@ -1063,10 +1061,10 @@ LET RCOM()
 
 GET "SYNHDR"
 
-LET PLIST(X, N, D)
+PLIST(X, N, D)
 {
-        LET SIZE = 0
-        LET V = TABLE 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+        auto SIZE = 0
+        auto V = TABLE 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 
         IF X=0 DO { writes("NIL"); RETURN  }
 

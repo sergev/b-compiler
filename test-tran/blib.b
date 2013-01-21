@@ -2,22 +2,22 @@
 
 GET "LIBHDR"
 
-LET writes(s)
+writes(s)
 {
     FOR i = 1 TO getbyte(s, 0) DO
         wrch(getbyte(s, i))
 }
 
-LET unpackstring(s, v)
+unpackstring(s, v)
 {
     FOR i = 0 TO getbyte(s, 0) DO
         v!i := getbyte(s, i)
 }
 
-LET packstring(v, s)
+packstring(v, s)
 {
-    LET n = v!0 & 255
-    LET i = n/4
+    auto n = v!0 & 255
+    auto i = n/4
     FOR p = 0 TO n DO putbyte(s, p, v!p)
     SWITCHON n&3 INTO {
         CASE 0: putbyte(s, n+3, 0)
@@ -30,10 +30,10 @@ LET packstring(v, s)
 
 // THE DEFINITIONS THAT FOLLOW ARE MACHINE INDEPENDENT
 
-LET writed(n, d)
+writed(n, d)
 {
-    LET t = VEC 20
-    LET i, k = 0, n
+    auto t = VEC 20
+    auto i, k = 0, n
     IF n<0 DO
         d, k := d-1, -n
     t!i, k, i := k REM 10, k/10, i+1 REPEATUNTIL k=0
@@ -45,25 +45,25 @@ LET writed(n, d)
         wrch(t!j+'0')
 }
 
-LET writen(n)
+writen(n)
 {
     writed(n, 0)
 }
 
-LET newline()
+newline()
 {
     wrch('*N')
 }
 
-LET newpage()
+newpage()
 {
     wrch('*P')
 }
 
-LET readn()
+readn()
 {
-    LET sum = 0
-    LET neg = FALSE
+    auto sum = 0
+    auto neg = FALSE
 
 L:  terminator := rdch()
     SWITCHON terminator INTO {
@@ -83,14 +83,14 @@ L:  terminator := rdch()
     RESULTIS sum
 }
 
-LET writeoct(n, d)
+writeoct(n, d)
 {
     IF d>1 DO
         writeoct(n>>3, d-1)
     wrch((n/\7)+'0')
 }
 
-LET writehex(n, d)
+writehex(n, d)
 {
     IF d>1 DO
         writehex(n>>4, d-1)
@@ -99,16 +99,16 @@ LET writehex(n, d)
         '8','9','A','B','C','D','E','F')
 }
 
-LET writef(format, a, b, c, d, e, f, g, h, i, j, k)
+writef(format, a, b, c, d, e, f, g, h, i, j, k)
 {
-    LET t = @a
+    auto t = @a
 
     FOR p = 1 TO getbyte(format, 0) DO {
-        LET k = getbyte(format, p)
+        auto k = getbyte(format, p)
 
         TEST k='%' THEN {
-            LET f, q, n = 0, t!0, 0
-            LET type = getbyte(format, p+1)
+            auto f, q, n = 0, t!0, 0
+            auto type = getbyte(format, p+1)
             p := p + 1
             SWITCHON type INTO {
                 DEFAULT: wrch(type); ENDCASE
@@ -131,4 +131,4 @@ LET writef(format, a, b, c, d, e, f, g, h, i, j, k)
     }
 }
 
-//LET mapstore() { writes("*Nmapstore NOT IMPLEMENTED*N"); }
+//mapstore() { writes("*Nmapstore NOT IMPLEMENTED*N"); }
