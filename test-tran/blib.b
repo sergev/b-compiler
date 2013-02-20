@@ -2,12 +2,6 @@
 
 GET "LIBHDR"
 
-writes(s)
-{
-    FOR i = 1 TO getbyte(s, 0) DO
-        wrch(getbyte(s, i))
-}
-
 unpackstring(s, v)
 {
     FOR i = 0 TO getbyte(s, 0) DO
@@ -28,7 +22,13 @@ packstring(v, s)
     RESULTIS i
 }
 
-// THE DEFINITIONS THAT FOLLOW ARE MACHINE INDEPENDENT
+// The definitions that follow are machine independent
+
+writes(s)
+{
+    FOR i = 1 TO getbyte(s, 0) DO
+        wrch(getbyte(s, i))
+}
 
 writed(n, d)
 {
@@ -130,5 +130,3 @@ writef(format, a, b, c, d, e, f, g, h, i, j, k)
         OR wrch(k)
     }
 }
-
-//mapstore() { writes("*Nmapstore NOT IMPLEMENTED*N"); }
